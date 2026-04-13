@@ -5,10 +5,10 @@
 // them here with a code in the URL. We exchange the code for a session,
 // which sets the auth cookies, then redirect to the app.
 
-const { url, cookies } = Astro;
+const { url, cookies, request } = Astro;
 import { createServerClient } from '../../lib/supabase.js';
 
-const supabase = createServerClient(cookies);
+const supabase = createServerClient(request, cookies);
 
 const code = url.searchParams.get('code');
 

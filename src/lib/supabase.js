@@ -15,13 +15,14 @@ const SUPABASE_URL = import.meta.env.PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 const SUPABASE_SERVICE_KEY = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Per-request client — reads/writes auth session from cookies.
-// Pass the Astro cookies object (from context.cookies).
-export function createServerClient(cookies) {
+// Per-request client — reads auth session from request headers,
+// writes session updates to Astro's cookies object.
+// Pass both the Request object and Astro's cookies helper.
+export function createServerClient(request, cookies) {
   return createSupabaseServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     cookies: {
       getAll() {
-        return cookies.headers ? parseCookieHeader(cookies.headers.get('cookie') ?? '') : [];
+        return parseCookieHeader(request.headers.get('cookie') ?? '');
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value, options }) => {

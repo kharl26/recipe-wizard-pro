@@ -12,7 +12,7 @@ export async function onRequest(context, next) {
   const { request, cookies, locals } = context;
 
   // --- Auth: read session from cookies ---
-  const supabase = createServerClient(cookies);
+  const supabase = createServerClient(request, cookies);
   const { data: { user } } = await supabase.auth.getUser();
 
   // Attach to locals so pages/API routes can use them
