@@ -1,0 +1,77 @@
+---
+const { locals } = Astro;
+const user = locals.user;
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Help — Recipe Wizard Pro</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <a href="/" style="text-decoration:none"><h1>&#129668; Recipe Wizard</h1></a>
+    </div>
+    <nav class="header-nav">
+      <a href="/" class="tab-switch-btn">Back to app</a>
+    </nav>
+  </header>
+
+  <div class="content-page">
+    <h1>How to use Recipe Wizard</h1>
+
+    <section>
+      <h2>Getting started</h2>
+      <p>Sign in with your email — we'll send a magic link, no password needed. First time? You'll go through a short onboarding conversation where the AI learns your cooking experience, dietary preferences, favorite cuisines, and what's in your pantry.</p>
+    </section>
+
+    <section>
+      <h2>Chatting with the Wizard</h2>
+      <p>Type what you have ("chicken thighs and rice"), what you're in the mood for ("something spicy and Italian"), or just say "Surprise me!" The AI suggests 4 recipes as compact cards above the chat. Click any card to see the full recipe.</p>
+      <ul>
+        <li><strong>Chat + Saved</strong> — AI may re-suggest your saved favorites alongside new ideas</li>
+        <li><strong>Chat only</strong> — only brand new recipes</li>
+        <li><strong>Saved only</strong> — search your saved collection without using a generation</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Recipe display</h2>
+      <p>Recipes open in a two-column layout: ingredients on the left, instructions on the right. Both columns have checkboxes so you can track progress while cooking.</p>
+      <ul>
+        <li><strong>Kitchen mode</strong> — click the "Kitchen mode" button for a full-screen, large-font view designed for cooking with the laptop on the counter</li>
+        <li><strong>Viewing as</strong> — switch between household members to see instructions at the right experience level (beginners get term definitions and safety notes; experienced cooks get concise steps)</li>
+        <li><strong>Column resizer</strong> — drag the divider between ingredients and instructions to adjust the split</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Saving recipes</h2>
+      <p>Click the star on any recipe card to save it. Saved recipes are always accessible — even on the free tier, you'll never lose access to recipes you've saved. A filled star means the recipe is already in your collection.</p>
+    </section>
+
+    <section>
+      <h2>Pantry</h2>
+      <p>Open the sidebar (&#9776; button) to see and manage your pantry. Add items with the input at the top, remove with the &times; button. The confidence badge (have/likely/maybe) cycles when clicked. The AI uses your pantry to suggest recipes with what you already have.</p>
+    </section>
+
+    <section>
+      <h2>Households</h2>
+      <p>Recipe Wizard supports multi-person households. Invite family members via Settings — they'll get their own account but share your pantry, saved recipes, and conversation history. Each person has their own preferences and cooking experience level.</p>
+    </section>
+
+    <section>
+      <h2>Free tier</h2>
+      <p>Everyone gets <strong>5 free recipe generations per month</strong>. The counter resets on the 1st of each month. Searching saved recipes, browsing, and managing your pantry don't count toward the limit. When you hit the limit, you'll see an upgrade prompt — or just wait for next month.</p>
+    </section>
+
+    <section>
+      <h2>Pro subscription</h2>
+      <p><strong>$2/month</strong> or <strong>$20/year</strong> for unlimited recipe generations. Cancel anytime — your subscription stays active until the end of the billing period, and your saved recipes are always accessible. Manage your subscription on the <a href="/subscribe">Subscribe page</a>.</p>
+    </section>
+  </div>
+</body>
+</html>

@@ -1,0 +1,638 @@
+---
+import { createDB } from '../lib/db.js';
+import { stripCodeBlocks } from '../lib/ai.js';
+import { renderRecipeModalBody } from '../lib/recipe-render.js';
+import { renderPantrySection } from '../lib/pantry-render.js';
+
+const { locals } = Astro;
+const user = locals.user;
+const profile = locals.profile;
+const isLoggedIn = !!user;
+
+// Only load data if authenticated
+let conversations = [];
+let bookmarks = [];
+let pantry = [];
+let pantryItems = [];
+let people = [];
+let usage = 0;
+let usageLimit = 5;
+let tier = 'free';
+
+if (isLoggedIn && profile) {
+  const db = createDB(locals.supabase, profile);
+  conversations = await db.getRecentConversations(20);
+  bookmarks = await db.getBookmarks();
+  pantry = await db.getPantry();
+  pantryItems = await db.getPantryItemNames();
+  people = await db.getPeople();
+  usage = await db.getUsage();
+  tier = profile.tier || 'free';
+}
+
+const isPro = tier === 'subscriber' || tier === 'friend' || tier === 'admin';
+
+// Cook bucket map for Alpine store
+const expToBucket = (e) => {
+  if (e === 'novice' || e === 'beginner') return 'beginner';
+  if (e === 'intermediate') return 'intermediate';
+  return 'experienced';
+};
+const cookBucketMap = { everyone: 'beginner' };
+const bucketRank = { beginner: 0, intermediate: 1, experienced: 2 };
+let lowestBucket = 'experienced';
+for (const p of people) {
+  const b = expToBucket(p.experience);
+  cookBucketMap[p.name.toLowerCase()] = b;
+  if (bucketRank[b] < bucketRank[lowestBucket]) lowestBucket = b;
+}
+cookBucketMap.everyone = lowestBucket;
+
+// Suggestion chips
+const CHIP_EXCLUDE = [
+  /\b(salt|pepper|cumin|coriander|paprika|oregano|basil|thyme|rosemary|chives|mint|parsley|cilantro|garam masala|turmeric|cinnamon|nutmeg|cloves?)\b/i,
+  /\b(oil|butter|spray|lard)\b/i,
+  /\b(sauce|vinegar|honey|sugar|syrup|molasses|ketchup|mustard|mayo)\b/i,
+  /\b(stock|broth|bouillon)\b/i,
+  /\b(garlic|ginger)\b/i,
+  /\b(sesame seeds|dried spice|spice collection|spice mix|spice blend)\b/i,
+  /\b(flour|cornstarch|baking)\b/i,
+  /\b(ancho|chili powder|red pepper|cayenne|sambal|pickled peppers)\b/i,
+];
+const primaryPantry = pantry
+  .filter(i => (i.confidence === 'certain' || i.confidence === 'likely')
+    && !CHIP_EXCLUDE.some(rx => rx.test(i.item)))
+  .map(i => i.item);
+const pantryPick = primaryPantry.length > 0
+  ? primaryPantry[Math.floor(Math.random() * primaryPantry.length)]
+  : null;
+
+const SHOPPING_SUGGESTIONS = [
+  'calamari', 'lamb chops', 'duck breast', 'salmon fillets', 'shrimp',
+  'lobster tails', 'scallops', 'crab legs', 'mussels', 'clams',
+  'veal cutlets', 'bison', 'venison', 'tofu', 'tempeh',
+  'sweet potatoes', 'artichokes', 'asparagus', 'brussels sprouts',
+  'portobello mushrooms', 'eggplant', 'fennel', 'leeks',
+  'fresh mozzarella', 'goat cheese', 'brie', 'gruyere',
+  'fresh pasta', 'gnocchi', 'udon noodles', 'rice noodles',
+  'polenta', 'couscous', 'quinoa', 'chorizo', 'pancetta', 'prosciutto',
+];
+const pantryLower = new Set(pantryItems);
+const shoppingOptions = SHOPPING_SUGGESTIONS.filter(s => !pantryLower.has(s.toLowerCase()));
+const shoppingPick = shoppingOptions.length > 0
+  ? shoppingOptions[Math.floor(Math.random() * shoppingOptions.length)]
+  : 'something new';
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recipe Wizard Pro</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body x-data="{ tab: 'chat', sidebarOpen: false, mode: 'include', showSignIn: false }">
+  <script id="rw-cook-config" type="application/json" set:html={JSON.stringify(cookBucketMap)}></script>
+
+  <!-- Sign-in modal overlay -->
+  <div class="signin-overlay" x-show="showSignIn" x-cloak @click.self="showSignIn = false">
+    <div class="signin-modal">
+      <button class="modal-close" @click="showSignIn = false">&times;</button>
+      <h2>Sign in to Recipe Wizard</h2>
+      <p>Enter your email and we'll send you a magic link — no password needed.</p>
+      <form id="signin-form" onsubmit="handleSignIn(event)">
+        <input type="email" name="email" placeholder="you@example.com" required autocomplete="email" class="signin-input">
+        <button type="submit" class="signin-btn">Send magic link</button>
+        <div id="signin-status" class="signin-status"></div>
+      </form>
+    </div>
+  </div>
+
+  <header>
+    <div class="header-left">
+      {isLoggedIn && (
+        <button class="sidebar-toggle" @click="sidebarOpen = !sidebarOpen">&#9776;</button>
+      )}
+      <h1>&#129668; Recipe Wizard</h1>
+      {isPro && <span class="pro-badge">Pro</span>}
+      <svg id="header-busy" class="header-busy-bowl" viewBox="0 0 80 80" width="24" height="24" aria-hidden="true">
+        <path d="M12 38 Q12 66 40 66 Q68 66 68 38" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+        <line x1="12" y1="38" x2="68" y2="38" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+        <g class="spoon-stir"><line x1="40" y1="38" x2="40" y2="8" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><ellipse cx="40" cy="7" rx="4.5" ry="3.5" fill="currentColor"/></g>
+      </svg>
+    </div>
+    <nav class="header-nav">
+      {isLoggedIn ? (
+        <>
+          <button type="button" class="tab-switch-btn" x-show="tab === 'chat'" @click="tab = 'bookmarks'" data-bookmark-count title="Switch to your saved recipes">Saved ({bookmarks.length})</button>
+          <button type="button" class="tab-switch-btn" x-show="tab === 'bookmarks'" x-cloak @click="tab = 'chat'" title="Back to chat">Chat</button>
+
+          <select class="header-picker-select" x-show="tab === 'chat'" x-model="mode" title="Limit recipe sources">
+            <option value="include">Chat + Saved</option>
+            <option value="new">Chat only</option>
+            <option value="saved">Saved only</option>
+          </select>
+
+          {people.length > 0 && (
+            <select class="header-picker-select"
+                    x-init="$el.value = $store.cook.current"
+                    @change="$store.cook.set($event.target.value)"
+                    title="Show instructions calibrated to this person's experience level">
+              <option value="everyone">Everyone (most detailed)</option>
+              {people.map(p => (
+                <option value={p.name.toLowerCase()}>{p.name} ({p.experience})</option>
+              ))}
+            </select>
+          )}
+
+          {!isPro && (
+            <span id="usage-counter" class="usage-counter" title="Free tier: recipe generations this month">
+              {usage} of {usageLimit} this month
+            </span>
+          )}
+
+          <a href="/settings" class="header-link" title="Profile &amp; household settings">Settings</a>
+          <span class="user-email" title={user.email}>{displayName}</span>
+          <form method="POST" action="/api/auth/signout" style="display:inline">
+            <button type="submit" class="signout-btn" title="Sign out">Sign out</button>
+          </form>
+        </>
+      ) : (
+        <>
+          <a href="/help" class="header-link">Help</a>
+          <a href="/support" class="header-link">About</a>
+          <button type="button" class="signin-trigger" @click="showSignIn = true">Sign in</button>
+        </>
+      )}
+    </nav>
+  </header>
+
+  {isLoggedIn ? (
+    <div class="app-layout">
+      <!-- Sidebar -->
+      <aside class="sidebar" x-show="sidebarOpen" x-cloak id="sidebar">
+        <div class="sidebar-section">
+          <h3>Household</h3>
+          {people.map(p => (
+            <div class="sidebar-item">{p.name}</div>
+          ))}
+          {people.length === 0 && <div class="sidebar-empty">Complete onboarding to set up your household.</div>}
+        </div>
+        <Fragment set:html={renderPantrySection(pantry)} />
+      </aside>
+      <div class="sidebar-resizer" x-show="sidebarOpen" x-cloak id="sidebar-resizer" title="Drag to resize"></div>
+
+      <!-- Main content -->
+      <main>
+        <!-- Chat tab -->
+        <div x-show="tab === 'chat'" class="chat-layout">
+          <div id="recipe-shelf" class="recipe-shelf"></div>
+          <div id="chat-history" class="chat-history">
+            {conversations.length === 0 && (
+              <div class="welcome-message">
+                <h2>Welcome to Recipe Wizard! &#127869;</h2>
+                <p>Tell me what ingredients you have, what you're in the mood for, or just say "surprise me!" I'll suggest recipes tailored to your tastes.</p>
+                <div class="suggestion-chips">
+                  {pantryPick && (
+                    <button class="chip" title="From your pantry"
+                            hx-post="/api/chat"
+                            hx-vals={`{"message":"I have ${pantryPick}. What can we make with it?"}`}
+                            hx-target="#chat-history" hx-swap="beforeend"
+                            hx-on::before-request="chipBusy(this)"
+                            hx-on::after-request="chipDone()">{cap(pantryPick)}</button>
+                  )}
+                  <button class="chip" title="Something new"
+                          hx-post="/api/chat"
+                          hx-vals='{"message":"Surprise me with something easy for two people tonight!"}'
+                          hx-target="#chat-history" hx-swap="beforeend"
+                          hx-on::before-request="chipBusy(this)"
+                          hx-on::after-request="chipDone()">Surprise me!</button>
+                  <button class="chip" title="Shopping required"
+                          hx-post="/api/chat"
+                          hx-vals={`{"message":"I'd like to try cooking with ${shoppingPick}. What do you suggest?"}`}
+                          hx-target="#chat-history" hx-swap="beforeend"
+                          hx-on::before-request="chipBusy(this)"
+                          hx-on::after-request="chipDone()">{cap(shoppingPick)}</button>
+                </div>
+              </div>
+            )}
+            {conversations.map(c => (
+              <div class={`chat-message ${c.role}-message`}>
+                <div class="message-content" set:html={c.role === 'assistant'
+                  ? stripCodeBlocks(c.content).replace(/\n/g, '<br>')
+                  : c.content.replace(/\n/g, '<br>')} />
+              </div>
+            ))}
+          </div>
+
+          <form class="chat-input" hx-post="/api/chat" hx-target="#chat-history" hx-swap="beforeend"
+                hx-on::before-request="showUserMessage(this)"
+                hx-on::after-request="afterChat(this)"
+                hx-indicator="#chat-spinner">
+            <input type="hidden" name="bookmark_mode" :value="mode">
+            <div class="chat-input-row">
+              <textarea name="message" class="chat-textarea"
+                        :placeholder="mode === 'saved' ? 'Search saved (e.g. chicken, Italian, easy)...' : 'What would you like to cook?'"
+                        autocomplete="off" required rows="1"
+                        @input="$el.style.height = 'auto'; $el.style.height = $el.scrollHeight + 'px'"
+                        @keydown.enter.prevent="if(!$event.shiftKey) $el.closest('form').requestSubmit()"></textarea>
+              <button type="submit" x-text="mode === 'saved' ? 'Search' : 'Send'">Send</button>
+              <button type="button" class="clear-chat-btn" onclick="clearChat()" title="Delete all conversation history and start fresh">Clear chat</button>
+              <span id="chat-spinner" class="htmx-indicator" x-text="mode === 'saved' ? 'Searching...' : 'Mixing...'">Mixing...</span>
+            </div>
+          </form>
+        </div>
+
+        <!-- Saved tab -->
+        <div x-show="tab === 'bookmarks'" x-cloak>
+          <h2 class="tab-heading">Saved Recipes</h2>
+          {bookmarks.length === 0 && <div class="empty-state">No saved recipes yet. Save recipes from the chat to find them here.</div>}
+          <div class="recipe-grid" id="bookmarks-grid">
+            {bookmarks.map(b => (
+              <div class="recipe-card bookmark-card" x-data="{ showModal: false }">
+                <div class="recipe-card-body" @click="showModal = true">
+                  <h3 class="recipe-title">{b.recipe.title}</h3>
+                  <p class="recipe-desc">{b.recipe.description}</p>
+                  <div class="recipe-meta">
+                    <span class="recipe-time">{b.recipe.cookTime}</span>
+                    <span class={`recipe-difficulty ${(b.recipe.difficulty || '').toLowerCase()}`}>{b.recipe.difficulty}</span>
+                    {b.recipe.cuisine && <span class="recipe-cuisine">{b.recipe.cuisine}</span>}
+                    {b.recipe.servings && <span class="recipe-servings">{b.recipe.servings} servings</span>}
+                  </div>
+                </div>
+                <button class="bookmark-btn bookmarked"
+                        hx-delete={`/api/bookmarks?id=${b.id}`}
+                        hx-confirm="Remove this recipe from saved?"
+                        hx-swap="outerHTML"
+                        hx-target="closest .bookmark-card"
+                        title="Remove from saved">&#9733;</button>
+                <div class="recipe-modal-overlay" x-show="showModal" x-cloak @click.self="showModal = false">
+                  <div class="recipe-modal" set:html={renderRecipeModalBody(b.recipe, pantryItems)}></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
+    </div>
+  ) : (
+    <!-- Landing page for logged-out users -->
+    <div class="landing">
+      <div class="landing-hero">
+        <h2>Your AI-powered kitchen companion</h2>
+        <p>Tell Recipe Wizard what ingredients you have, and it'll suggest recipes tailored to your household's tastes, dietary needs, and cooking experience.</p>
+        <div class="landing-features">
+          <div class="landing-feature">
+            <strong>Personalized</strong>
+            <span>Learns your pantry, preferences, and experience level</span>
+          </div>
+          <div class="landing-feature">
+            <strong>Household-aware</strong>
+            <span>Multiple cooks, shared pantry, per-person preferences</span>
+          </div>
+          <div class="landing-feature">
+            <strong>Kitchen-friendly</strong>
+            <span>Two-column layout, checkboxes, kitchen mode for cooking</span>
+          </div>
+        </div>
+        <p class="landing-cta">
+          <button type="button" class="signin-trigger large" @click="showSignIn = true">Get started — it's free</button>
+        </p>
+        <p class="landing-note">5 free recipe generations per month. No credit card required.</p>
+      </div>
+    </div>
+  )}
+
+  <script>
+    import Alpine from 'alpinejs';
+    import htmx from 'htmx.org';
+
+    window.Alpine = Alpine;
+    window.htmx = htmx;
+
+    // Cook picker store
+    const configEl = document.getElementById('rw-cook-config');
+    const bucketMap = configEl ? JSON.parse(configEl.textContent) : { everyone: 'beginner' };
+    const savedCook = localStorage.getItem('rw_active_cook') || 'everyone';
+    Alpine.store('cook', {
+      current: bucketMap[savedCook] !== undefined ? savedCook : 'everyone',
+      get bucket() {
+        return bucketMap[this.current] || 'beginner';
+      },
+      set(name) {
+        if (bucketMap[name] === undefined) name = 'everyone';
+        this.current = name;
+        localStorage.setItem('rw_active_cook', name);
+      },
+    });
+
+    Alpine.start();
+
+    // Sign-in handler
+    window.handleSignIn = async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const email = form.email.value.trim();
+      const status = document.getElementById('signin-status');
+      const btn = form.querySelector('button[type="submit"]');
+
+      btn.disabled = true;
+      btn.textContent = 'Sending...';
+      status.textContent = '';
+
+      try {
+        const resp = await fetch('/api/auth/signin', {
+          method: 'POST',
+          body: new FormData(form),
+        });
+        const result = await resp.json();
+        if (result.ok) {
+          status.className = 'signin-status success';
+          status.textContent = 'Check your email for the magic link!';
+          btn.textContent = 'Link sent!';
+        } else {
+          status.className = 'signin-status error';
+          status.textContent = result.error || 'Something went wrong.';
+          btn.disabled = false;
+          btn.textContent = 'Send magic link';
+        }
+      } catch (err) {
+        status.className = 'signin-status error';
+        status.textContent = 'Network error. Please try again.';
+        btn.disabled = false;
+        btn.textContent = 'Send magic link';
+      }
+    };
+
+    // Copy shopping list
+    window.copyShoppingList = (btn, count) => {
+      try {
+        const text = atob(btn.dataset.list);
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        ta.style.top = '-9999px';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.textContent = ok ? 'Copied!' : 'Copy failed';
+        setTimeout(() => btn.innerHTML = '&#128203; Copy shopping list (' + count + ' items)', 1500);
+      } catch (err) {
+        console.error('Copy error:', err);
+        btn.textContent = 'Copy failed';
+        setTimeout(() => btn.innerHTML = '&#128203; Copy shopping list (' + count + ' items)', 1500);
+      }
+    };
+
+    // Suggestion chip busy state
+    window.chipBusy = (btn) => {
+      const history = document.getElementById('chat-history');
+      const welcome = document.querySelector('.welcome-message');
+      if (welcome) welcome.style.display = 'none';
+      const msg = btn.textContent.trim();
+      history.insertAdjacentHTML('beforeend',
+        `<div class="chat-message user-message"><div class="message-content">${msg.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div></div>`
+      );
+      history.insertAdjacentHTML('beforeend',
+        `<div class="chat-message thinking-indicator" id="thinking-spinner">
+          <div class="thinking-bowl-wrap">
+            <svg class="thinking-bowl" viewBox="0 0 80 80" width="56" height="56" aria-hidden="true">
+              <path d="M12 38 Q12 66 40 66 Q68 66 68 38" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+              <line x1="12" y1="38" x2="68" y2="38" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+              <g class="spoon-stir"><line x1="40" y1="38" x2="40" y2="8" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><ellipse cx="40" cy="7" rx="4" ry="3" fill="currentColor"/></g>
+            </svg>
+            <span>Mixing up recipes&hellip;</span>
+          </div>
+        </div>`
+      );
+      document.getElementById('header-busy')?.classList.add('visible');
+      scrollChat();
+    };
+
+    window.chipDone = () => {
+      const spinner = document.getElementById('thinking-spinner');
+      if (spinner) spinner.remove();
+      document.getElementById('header-busy')?.classList.remove('visible');
+      scrollChat();
+    };
+
+    // Show user message immediately
+    window.showUserMessage = (form) => {
+      const textarea = form.querySelector('.chat-textarea');
+      const msg = textarea.value.trim();
+      if (!msg) return;
+      const history = document.getElementById('chat-history');
+      history.insertAdjacentHTML('beforeend',
+        `<div class="chat-message user-message"><div class="message-content">${msg.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}</div></div>`
+      );
+      textarea.value = '';
+      textarea.style.height = 'auto';
+      textarea.disabled = true;
+      form.classList.add('chat-loading');
+      history.insertAdjacentHTML('beforeend',
+        `<div class="chat-message thinking-indicator" id="thinking-spinner">
+          <div class="thinking-bowl-wrap">
+            <svg class="thinking-bowl" viewBox="0 0 80 80" width="56" height="56" aria-hidden="true">
+              <path d="M12 38 Q12 66 40 66 Q68 66 68 38" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+              <line x1="12" y1="38" x2="68" y2="38" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+              <g class="spoon-stir"><line x1="40" y1="38" x2="40" y2="8" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><ellipse cx="40" cy="7" rx="4" ry="3" fill="currentColor"/></g>
+            </svg>
+            <span>Mixing up recipes&hellip;</span>
+          </div>
+        </div>`
+      );
+      document.getElementById('header-busy')?.classList.add('visible');
+      scrollChat();
+    };
+
+    window.afterChat = (form) => {
+      const textarea = form.querySelector('.chat-textarea');
+      textarea.disabled = false;
+      form.classList.remove('chat-loading');
+      textarea.focus();
+      const spinner = document.getElementById('thinking-spinner');
+      if (spinner) spinner.remove();
+      document.getElementById('header-busy')?.classList.remove('visible');
+      scrollChat();
+    };
+
+    window.togglePantry = async (el, itemName, currentlyInPantry) => {
+      const action = currentlyInPantry ? 'remove' : 'add';
+      try {
+        const resp = await fetch('/api/pantry-toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ item: itemName, action }),
+        });
+        if (resp.ok) {
+          const li = el.closest('li');
+          const escapedName = itemName.replace(/'/g, "\\'");
+          if (action === 'add') {
+            el.innerHTML = '\u2705';
+            el.title = 'In pantry \u2014 click to mark as used up';
+            el.setAttribute('onclick', `togglePantry(this, '${escapedName}', true)`);
+            li.className = 'in-pantry';
+          } else {
+            el.innerHTML = '\u{1F6D2}';
+            el.title = 'May need to buy \u2014 click to confirm you have it';
+            el.setAttribute('onclick', `togglePantry(this, '${escapedName}', false)`);
+            li.className = 'need-to-buy';
+          }
+          const modal = el.closest('.recipe-modal');
+          if (modal) {
+            const needCount = modal.querySelectorAll('li.need-to-buy').length;
+            const card = modal.closest('.recipe-card') || modal.closest('.bookmark-card');
+            if (card) {
+              const badge = card.querySelector('.recipe-shopping-badge');
+              if (needCount > 0) {
+                if (badge) {
+                  badge.innerHTML = '&#128722; ' + needCount;
+                  badge.title = needCount + ' ingredient(s) may need purchasing';
+                }
+              } else if (badge) {
+                badge.remove();
+              }
+            }
+            const slBtn = modal.querySelector('.shopping-list-btn');
+            const slActions = modal.querySelector('.shopping-list-actions');
+            const allInPantry = modal.querySelector('.all-in-pantry');
+            if (needCount > 0) {
+              const items = Array.from(modal.querySelectorAll('li.need-to-buy'))
+                .map(li => '- ' + (li.querySelector('.check-text')?.textContent?.trim() || ''));
+              const title = modal.querySelector('h2')?.textContent || 'Recipe';
+              const listText = 'Shopping list for ' + title + '\n' + items.join('\n');
+              const b64 = btoa(listText);
+              if (slBtn) {
+                slBtn.dataset.list = b64;
+                slBtn.innerHTML = '&#128203; Copy shopping list (' + needCount + ' items)';
+              } else if (allInPantry) {
+                allInPantry.outerHTML = '<div class="shopping-list-actions"><button class="shopping-list-btn" data-list="' + b64 + '" onclick="copyShoppingList(this, ' + needCount + ')">&#128203; Copy shopping list (' + needCount + ' items)</button></div>';
+              }
+            } else {
+              if (slActions) {
+                slActions.outerHTML = '<div class="all-in-pantry">&#9989; You have everything for this recipe!</div>';
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Pantry toggle error:', err);
+      }
+    };
+
+    window.scrollChat = () => {
+      const el = document.getElementById('chat-history');
+      if (el) setTimeout(() => el.scrollTop = el.scrollHeight, 100);
+    };
+
+    window.toggleKitchenMode = (btn) => {
+      const modal = btn.closest('.recipe-modal');
+      if (!modal) return;
+      const on = modal.classList.toggle('kitchen-mode');
+      btn.innerHTML = on ? '&#9587; Exit kitchen mode' : '&#127859; Kitchen mode';
+    };
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const km = document.querySelector('.recipe-modal.kitchen-mode');
+      if (km) {
+        km.classList.remove('kitchen-mode');
+        const btn = km.querySelector('.kitchen-mode-toggle');
+        if (btn) btn.innerHTML = '&#127859; Kitchen mode';
+        e.stopPropagation();
+      }
+    });
+
+    window.startRecipeColResize = (e) => {
+      const resizer = e.target;
+      const cols = resizer.closest('.recipe-columns');
+      const ingCol = cols.querySelector('.recipe-col-ingredients');
+      if (!cols || !ingCol) return;
+      const startX = e.clientX;
+      const startW = ingCol.offsetWidth;
+      const colsW = cols.offsetWidth;
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+      const onMove = (ev) => {
+        let pct = ((startW + (ev.clientX - startX)) / colsW) * 100;
+        pct = Math.max(15, Math.min(60, pct));
+        ingCol.style.width = pct + '%';
+      };
+      const onUp = () => {
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        localStorage.setItem('rw_recipe_col_pct', (ingCol.offsetWidth / colsW * 100).toFixed(1));
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    };
+
+    document.addEventListener('click', (e) => {
+      const modal = e.target.closest?.('.recipe-card-body, .recipe-card-img');
+      if (!modal) return;
+      const savedPct = localStorage.getItem('rw_recipe_col_pct');
+      if (!savedPct) return;
+      setTimeout(() => {
+        document.querySelectorAll('.recipe-col-ingredients').forEach(el => {
+          el.style.width = savedPct + '%';
+        });
+      }, 50);
+    });
+
+    window.clearChat = async () => {
+      if (!confirm('Delete all conversation history and start fresh? This cannot be undone.')) return;
+      try {
+        const resp = await fetch('/api/conversations', { method: 'DELETE' });
+        if (resp.ok) window.location.reload();
+        else alert('Failed to clear conversations.');
+      } catch (err) {
+        console.error('Clear chat error:', err);
+        alert('Failed to clear conversations.');
+      }
+    };
+
+    document.addEventListener('htmx:afterSwap', (evt) => {
+      window.htmx?.process(evt.target);
+    });
+
+    scrollChat();
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) scrollChat();
+    });
+
+    // Sidebar resize
+    (() => {
+      const sidebar = document.getElementById('sidebar');
+      const resizer = document.getElementById('sidebar-resizer');
+      if (!sidebar || !resizer) return;
+      const MIN = 180, MAX = 600;
+      const saved = parseInt(localStorage.getItem('rw_sidebar_width') || '', 10);
+      if (saved && saved >= MIN && saved <= MAX) sidebar.style.width = saved + 'px';
+      let dragging = false, startX = 0, startWidth = 0;
+      resizer.addEventListener('mousedown', (e) => {
+        dragging = true; startX = e.clientX; startWidth = sidebar.offsetWidth;
+        document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none';
+        e.preventDefault();
+      });
+      document.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        sidebar.style.width = Math.max(MIN, Math.min(MAX, startWidth + (e.clientX - startX))) + 'px';
+      });
+      document.addEventListener('mouseup', () => {
+        if (!dragging) return;
+        dragging = false; document.body.style.cursor = ''; document.body.style.userSelect = '';
+        localStorage.setItem('rw_sidebar_width', sidebar.offsetWidth);
+      });
+    })();
+  </script>
+</body>
+</html>

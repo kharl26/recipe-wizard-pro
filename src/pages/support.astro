@@ -1,0 +1,81 @@
+---
+// Support / About page — transparent cost explanation, tier-aware messaging.
+const { locals } = Astro;
+const user = locals.user;
+const profile = locals.profile;
+const tier = profile?.tier || 'free';
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About — Recipe Wizard Pro</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <a href="/" style="text-decoration:none"><h1>&#129668; Recipe Wizard</h1></a>
+    </div>
+    <nav class="header-nav">
+      <a href="/" class="tab-switch-btn">Back to app</a>
+    </nav>
+  </header>
+
+  <div class="content-page">
+    <h1>About Recipe Wizard</h1>
+
+    <section>
+      <h2>What this is</h2>
+      <p>Recipe Wizard is a personal project built by a home cook for home cooks. It uses AI to suggest recipes tailored to your household — what's in your pantry, what you like, what you avoid, and how experienced you are in the kitchen.</p>
+    </section>
+
+    <section>
+      <h2>Why it costs money</h2>
+      <p>Every time you ask for recipes, the app sends your request to an AI service (Claude by Anthropic) which generates personalized suggestions. That AI call costs real money — roughly half a cent per request. It doesn't sound like much, but it adds up:</p>
+      <ul>
+        <li><strong>AI processing:</strong> ~$0.005 per recipe generation</li>
+        <li><strong>Database:</strong> Supabase stores your pantry, preferences, saved recipes, and household data</li>
+        <li><strong>Hosting:</strong> The app runs on Vercel so it's available from any device</li>
+      </ul>
+      <p>The subscription fee ($2/month or $20/year) covers these ongoing costs. There's no venture capital, no advertising, no data selling — just a small fee to keep the lights on.</p>
+    </section>
+
+    <section>
+      <h2>What's free, what's not</h2>
+      <ul>
+        <li><strong>Free forever:</strong> browsing and viewing your saved recipes, managing your pantry, household settings, searching your saved collection</li>
+        <li><strong>5 per month free:</strong> new recipe generations (asking the AI for suggestions)</li>
+        <li><strong>Unlimited with Pro:</strong> $2/month or $20/year for unlimited recipe generations</li>
+      </ul>
+    </section>
+
+    {tier === 'subscriber' && (
+      <section class="tier-message">
+        <h2>Thank you for subscribing!</h2>
+        <p>Your subscription directly supports the AI processing costs that make Recipe Wizard possible. You have unlimited recipe generations — cook to your heart's content.</p>
+      </section>
+    )}
+
+    {tier === 'friend' && (
+      <section class="tier-message">
+        <h2>Friends & Family</h2>
+        <p>You're on the Friends & Family plan. You have unlimited recipe generations as a thank-you for being an early supporter. If you'd like to help cover the AI costs, you can <a href="/subscribe">subscribe</a> at any time — every bit helps keep the app running.</p>
+      </section>
+    )}
+
+    {tier === 'free' && user && (
+      <section class="tier-message">
+        <h2>Your plan</h2>
+        <p>You're on the free tier with 5 recipe generations per month. If you find Recipe Wizard useful, consider <a href="/subscribe">subscribing</a> — it's $2/month and directly covers the cost of running the AI that makes your recipes.</p>
+      </section>
+    )}
+
+    <section>
+      <h2>Questions?</h2>
+      <p>Recipe Wizard is a one-person project. If you have questions, feedback, or run into issues, reach out to the developer directly. Your feedback genuinely shapes what gets built next.</p>
+    </section>
+  </div>
+</body>
+</html>

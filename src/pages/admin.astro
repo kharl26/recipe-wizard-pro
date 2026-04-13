@@ -1,0 +1,169 @@
+---
+// Admin dashboard — only accessible to users with tier='admin'.
+// Shows user list, usage stats, tier management, cost estimates.
+import { supabaseAdmin } from '../lib/supabase.js';
+
+const { locals } = Astro;
+const user = locals.user;
+const profile = locals.profile;
+
+// Gate: must be admin
+if (!user || !profile || profile.tier !== 'admin') {
+  return Astro.redirect('/');
+}
+
+if (!supabaseAdmin) {
+  return new Response('Admin client not configured', { status: 500 });
+}
+
+// Fetch all data for the dashboard
+const { data: allProfiles } = await supabaseAdmin
+  .from('profiles')
+  .select('id, display_name, household_id, experience, tier, onboarded, created_at');
+
+const { data: allUsage } = await supabaseAdmin
+  .from('user_usage')
+  .select('user_id, month, count');
+
+const { data: allUsers } = await supabaseAdmin.auth.admin.listUsers();
+const users = allUsers?.users || [];
+
+const { data: allBookmarks } = await supabaseAdmin
+  .from('bookmarks')
+  .select('id', { count: 'exact', head: true });
+
+const { data: allHouseholds } = await supabaseAdmin
+  .from('households')
+  .select('id', { count: 'exact', head: true });
+
+// Build stats
+const currentMonth = new Date().toISOString().slice(0, 7);
+const profiles = allProfiles || [];
+const usageRows = allUsage || [];
+
+const totalUsers = profiles.length;
+const subscribers = profiles.filter(p => p.tier === 'subscriber').length;
+const friends = profiles.filter(p => p.tier === 'friend').length;
+const freeUsers = profiles.filter(p => p.tier === 'free').length;
+
+const thisMonthUsage = usageRows.filter(u => u.month === currentMonth);
+const totalGenerationsThisMonth = thisMonthUsage.reduce((sum, u) => sum + u.count, 0);
+const estimatedCostThisMonth = (totalGenerationsThisMonth * 0.005).toFixed(2);
+
+// Per-user table: merge profiles + auth users + usage
+const userTable = profiles.map(p => {
+  const authUser = users.find(u => u.id === p.id);
+  const monthUsage = thisMonthUsage.find(u => u.user_id === p.id);
+  const totalUsage = usageRows.filter(u => u.user_id === p.id).reduce((sum, u) => sum + u.count, 0);
+  return {
+    id: p.id,
+    email: authUser?.email || '?',
+    display_name: p.display_name || '-',
+    tier: p.tier,
+    experience: p.experience,
+    this_month: monthUsage?.count || 0,
+    total: totalUsage,
+    est_cost: (totalUsage * 0.005).toFixed(2),
+    created: new Date(p.created_at).toLocaleDateString(),
+    cost_flag: totalUsage * 0.005 > 10, // flag if > $10 annual cost
+  };
+}).sort((a, b) => b.total - a.total);
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Recipe Wizard Pro</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <a href="/" style="text-decoration:none"><h1>&#129668; Recipe Wizard Admin</h1></a>
+    </div>
+    <nav class="header-nav">
+      <a href="/" class="tab-switch-btn">Back to app</a>
+    </nav>
+  </header>
+
+  <div class="settings-page">
+    <!-- Summary cards -->
+    <div class="admin-summary">
+      <div class="admin-stat">
+        <span class="admin-stat-number">{totalUsers}</span>
+        <span class="admin-stat-label">Total users</span>
+      </div>
+      <div class="admin-stat">
+        <span class="admin-stat-number">{subscribers}</span>
+        <span class="admin-stat-label">Subscribers</span>
+      </div>
+      <div class="admin-stat">
+        <span class="admin-stat-number">{friends}</span>
+        <span class="admin-stat-label">Friends</span>
+      </div>
+      <div class="admin-stat">
+        <span class="admin-stat-number">{totalGenerationsThisMonth}</span>
+        <span class="admin-stat-label">Generations ({currentMonth})</span>
+      </div>
+      <div class="admin-stat">
+        <span class="admin-stat-number">${estimatedCostThisMonth}</span>
+        <span class="admin-stat-label">Est. cost ({currentMonth})</span>
+      </div>
+    </div>
+
+    <!-- User table -->
+    <div class="settings-section">
+      <h2>Users</h2>
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Tier</th>
+            <th>This month</th>
+            <th>All time</th>
+            <th>Est. cost</th>
+            <th>Joined</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {userTable.map(u => (
+            <tr class={u.cost_flag ? 'cost-flagged' : ''}>
+              <td>
+                <div>{u.display_name}</div>
+                <div class="admin-email">{u.email}</div>
+              </td>
+              <td>
+                <select class="tier-select" data-user-id={u.id} onchange={`updateTier('${u.id}', this.value)`}>
+                  {['free', 'friend', 'subscriber', 'admin'].map(t => (
+                    <option value={t} selected={u.tier === t}>{t}</option>
+                  ))}
+                </select>
+              </td>
+              <td>{u.this_month}</td>
+              <td>{u.total}</td>
+              <td class={u.cost_flag ? 'cost-warning' : ''}>${u.est_cost}{u.cost_flag && ' ⚠'}</td>
+              <td>{u.created}</td>
+              <td><span class="admin-id">{u.id.slice(0, 8)}</span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script is:inline>
+    window.updateTier = async (userId, newTier) => {
+      try {
+        const resp = await fetch('/api/admin/tier', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: userId, tier: newTier }),
+        });
+        if (!resp.ok) alert('Failed to update tier');
+      } catch { alert('Network error'); }
+    };
+  </script>
+</body>
+</html>

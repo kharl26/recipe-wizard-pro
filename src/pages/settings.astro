@@ -1,0 +1,240 @@
+---
+// Settings page: profile, household members, invites, display name.
+import { createDB } from '../lib/db.js';
+
+const { locals } = Astro;
+const user = locals.user;
+const profile = locals.profile;
+
+if (!user) return Astro.redirect('/');
+
+const db = createDB(locals.supabase, profile);
+const people = await db.getPeople();
+const pendingInvites = await db.getPendingInvites();
+const notifications = await db.getNotifications();
+const household = await db.getHousehold();
+
+const displayName = profile?.display_name || '';
+const tier = profile?.tier || 'free';
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings — Recipe Wizard Pro</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <a href="/" style="text-decoration:none"><h1>&#129668; Recipe Wizard</h1></a>
+    </div>
+    <nav class="header-nav">
+      <a href="/" class="tab-switch-btn">Back to app</a>
+    </nav>
+  </header>
+
+  <div class="settings-page">
+    <!-- Notifications -->
+    {notifications.filter(n => !n.read).length > 0 && (
+      <div class="settings-section notifications-section">
+        <h2>Notifications</h2>
+        {notifications.filter(n => !n.read).map(n => (
+          <div class="notification-item" data-id={n.id}>
+            <strong>{n.title}</strong>
+            <p>{n.body}</p>
+            {n.type === 'invite' && n.metadata?.invite_id && (
+              <div class="notification-actions">
+                <button class="plan-btn" onclick={`respondInvite('${n.metadata.invite_id}', 'accept', '${n.id}')`}>Accept</button>
+                <button class="cancel-btn" onclick={`respondInvite('${n.metadata.invite_id}', 'decline', '${n.id}')`}>Decline</button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    )}
+
+    <!-- Profile -->
+    <div class="settings-section">
+      <h2>Your Profile</h2>
+      <form id="profile-form" class="settings-form">
+        <label>
+          Display Name
+          <input type="text" name="display_name" value={displayName} placeholder="Choose a display name" maxlength="30">
+        </label>
+        <label>
+          Cooking Experience
+          <select name="experience">
+            {['novice', 'beginner', 'intermediate', 'experienced', 'expert'].map(e => (
+              <option value={e} selected={profile?.experience === e}>{e.charAt(0).toUpperCase() + e.slice(1)}</option>
+            ))}
+          </select>
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" name="wine_pairing" checked={profile?.wine_pairing}>
+          Wine pairing suggestions
+        </label>
+        <button type="submit" class="plan-btn">Save profile</button>
+        <span id="profile-status" class="settings-status"></span>
+      </form>
+    </div>
+
+    <!-- Household -->
+    <div class="settings-section">
+      <h2>Household Members</h2>
+      <div class="member-list">
+        {people.map(p => (
+          <div class="member-item">
+            <div class="member-info">
+              <strong>{p.name}</strong>
+              <span class="member-exp">{p.experience}</span>
+              {p.id === user.id && <span class="member-you">(you)</span>}
+            </div>
+            {p.id !== user.id && (
+              <button class="cancel-btn" onclick={`removeMember('${p.id}', '${p.name}')`}>Remove</button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {people.length === 1 && (
+        <p class="settings-hint">You're cooking solo. Invite someone to share your pantry and recipes!</p>
+      )}
+
+      <h3>Invite someone</h3>
+      <form id="invite-form" class="settings-form inline-form">
+        <input type="email" name="email" placeholder="friend@example.com" required>
+        <button type="submit" class="plan-btn">Send invite</button>
+        <span id="invite-status" class="settings-status"></span>
+      </form>
+
+      {pendingInvites.length > 0 && (
+        <div class="pending-invites">
+          <h4>Pending invites</h4>
+          {pendingInvites.map(inv => (
+            <div class="invite-item">
+              <span>{inv.invited_email}</span>
+              <span class="invite-pending">Pending</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <h3>Leave household</h3>
+      {people.length > 1 ? (
+        <p class="settings-hint">
+          Leaving creates a new personal household for you. Your preferences and saved recipes will be copied.
+          <button class="cancel-btn" onclick="leaveHousehold()">Leave this household</button>
+        </p>
+      ) : (
+        <p class="settings-hint">You're the only member — you can't leave your own household, but you can invite others to join.</p>
+      )}
+    </div>
+
+    <!-- Account -->
+    <div class="settings-section">
+      <h2>Account</h2>
+      <p>Signed in as <strong>{user.email}</strong></p>
+      <p>Tier: <strong>{tier}</strong></p>
+      <a href="/subscribe" class="plan-btn" style="display:inline-block; text-decoration:none; text-align:center">Manage subscription</a>
+    </div>
+  </div>
+
+  <script is:inline>
+    // Profile save
+    document.getElementById('profile-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const status = document.getElementById('profile-status');
+      const body = {
+        display_name: form.display_name.value.trim() || null,
+        experience: form.experience.value,
+        wine_pairing: form.wine_pairing.checked,
+      };
+      try {
+        const resp = await fetch('/api/household/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const result = await resp.json();
+        status.textContent = result.ok ? 'Saved!' : (result.error || 'Failed');
+        status.className = 'settings-status ' + (result.ok ? 'success' : 'error');
+        setTimeout(() => status.textContent = '', 2000);
+      } catch { status.textContent = 'Network error'; }
+    });
+
+    // Invite
+    document.getElementById('invite-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const status = document.getElementById('invite-status');
+      try {
+        const resp = await fetch('/api/household/invite', {
+          method: 'POST',
+          body: new FormData(form),
+        });
+        const result = await resp.json();
+        if (result.ok) {
+          status.textContent = 'Invite sent!';
+          status.className = 'settings-status success';
+          form.reset();
+          setTimeout(() => location.reload(), 1500);
+        } else {
+          status.textContent = result.error || 'Failed';
+          status.className = 'settings-status error';
+        }
+      } catch { status.textContent = 'Network error'; }
+    });
+
+    // Remove member
+    window.removeMember = async (id, name) => {
+      if (!confirm(`Remove ${name} from the household? They'll be moved to their own household and both of you will be notified.`)) return;
+      try {
+        const resp = await fetch('/api/household/leave', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ member_id: id }),
+        });
+        if (resp.ok) location.reload();
+        else alert('Failed to remove member.');
+      } catch { alert('Network error.'); }
+    };
+
+    // Leave household
+    window.leaveHousehold = async () => {
+      if (!confirm('Leave this household? A new personal household will be created for you. Your preferences and saved recipes will be copied.')) return;
+      try {
+        const resp = await fetch('/api/household/leave', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
+        if (resp.ok) location.reload();
+        else alert('Failed to leave household.');
+      } catch { alert('Network error.'); }
+    };
+
+    // Respond to invite notification
+    window.respondInvite = async (inviteId, action, notifId) => {
+      try {
+        const resp = await fetch('/api/household/respond', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ invite_id: inviteId, action, carry_pantry: [] }),
+        });
+        if (resp.ok) {
+          // Mark notification as read
+          await fetch('/api/household/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mark_notification_read: notifId }),
+          });
+          location.reload();
+        }
+      } catch { alert('Network error.'); }
+    };
+  </script>
+</body>
+</html>

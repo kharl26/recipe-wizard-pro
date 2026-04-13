@@ -1,0 +1,154 @@
+---
+// Subscribe page: shows current plan, upgrade options, cancellation.
+import { getActiveSubscription } from '../lib/stripe.js';
+import { createDB } from '../lib/db.js';
+
+const { locals, url } = Astro;
+const user = locals.user;
+const profile = locals.profile;
+
+if (!user) return Astro.redirect('/');
+
+const tier = profile?.tier || 'free';
+const isPro = tier === 'subscriber' || tier === 'friend' || tier === 'admin';
+const db = createDB(locals.supabase, profile);
+const usage = await db.getUsage();
+const usageLimit = 5;
+
+// Check Stripe subscription status
+let subscription = null;
+let cancelAtPeriodEnd = false;
+let currentPeriodEnd = null;
+try {
+  subscription = await getActiveSubscription(user.email);
+  if (subscription) {
+    cancelAtPeriodEnd = subscription.cancel_at_period_end;
+    currentPeriodEnd = new Date(subscription.current_period_end * 1000).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'long', day: 'numeric'
+    });
+  }
+} catch (err) {
+  console.error('Stripe status check error:', err);
+}
+
+// If user just completed checkout, update their tier in Supabase
+const sessionId = url.searchParams.get('session_id');
+if (sessionId && subscription && profile?.tier === 'free') {
+  await locals.supabase
+    .from('profiles')
+    .update({ tier: 'subscriber' })
+    .eq('id', user.id);
+}
+
+const displayName = profile?.display_name || user.email?.split('@')[0] || '';
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subscribe — Recipe Wizard Pro</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <a href="/" style="text-decoration:none"><h1>&#129668; Recipe Wizard</h1></a>
+      {isPro && <span class="pro-badge">Pro</span>}
+    </div>
+    <nav class="header-nav">
+      <a href="/" class="tab-switch-btn">Back to app</a>
+      <span class="user-email">{displayName}</span>
+    </nav>
+  </header>
+
+  <div class="subscribe-page">
+    {subscription && !cancelAtPeriodEnd ? (
+      <!-- Active subscriber -->
+      <div class="subscribe-card active">
+        <h2>You're a Pro subscriber!</h2>
+        <p>Unlimited recipe generations. Your next billing date is <strong>{currentPeriodEnd}</strong>.</p>
+        <div class="subscribe-usage">
+          <span>Generations this month: <strong>{usage}</strong></span>
+        </div>
+        <hr>
+        <p class="cancel-section">
+          Need to cancel? Your subscription will remain active until the end of the current period.
+        </p>
+        <form method="POST" action="/api/stripe/cancel">
+          <input type="hidden" name="action" value="cancel">
+          <button type="submit" class="cancel-btn" onclick="return confirm('Cancel your subscription? You\'ll keep Pro access until the end of your current billing period.')">Cancel subscription</button>
+        </form>
+      </div>
+    ) : subscription && cancelAtPeriodEnd ? (
+      <!-- Cancellation pending -->
+      <div class="subscribe-card cancelling">
+        <h2>Your subscription is set to cancel</h2>
+        <p>You'll keep Pro access until <strong>{currentPeriodEnd}</strong>. After that, you'll return to the free tier (5 recipes/month).</p>
+        <p>Changed your mind?</p>
+        <form method="POST" action="/api/stripe/cancel">
+          <input type="hidden" name="action" value="reactivate">
+          <button type="submit" class="reactivate-btn">Reactivate subscription</button>
+        </form>
+      </div>
+    ) : tier === 'friend' ? (
+      <!-- Friend tier -->
+      <div class="subscribe-card friend">
+        <h2>Friends & Family Plan</h2>
+        <p>You're on the Friends & Family plan with unlimited recipe generations. Thank you for being part of the Recipe Wizard community!</p>
+        <div class="subscribe-usage">
+          <span>Generations this month: <strong>{usage}</strong></span>
+        </div>
+        <p class="friend-note">If you'd like to support Recipe Wizard's ongoing development, consider subscribing — it helps cover the AI processing costs that make the app possible.</p>
+        <div class="plan-cards">
+          <form method="POST" action="/api/stripe/checkout" class="plan-card">
+            <input type="hidden" name="plan" value="monthly">
+            <h3>Monthly</h3>
+            <div class="plan-price">$2<span>/month</span></div>
+            <button type="submit" class="plan-btn">Support monthly</button>
+          </form>
+          <form method="POST" action="/api/stripe/checkout" class="plan-card featured">
+            <input type="hidden" name="plan" value="annual">
+            <h3>Annual</h3>
+            <div class="plan-price">$20<span>/year</span></div>
+            <p class="plan-save">Save $4/year</p>
+            <button type="submit" class="plan-btn">Support annually</button>
+          </form>
+        </div>
+      </div>
+    ) : (
+      <!-- Free tier -->
+      <div class="subscribe-card free">
+        <h2>Upgrade to Pro</h2>
+        <p>You've used <strong>{usage} of {usageLimit}</strong> free recipe generations this month. Upgrade for unlimited access.</p>
+        <div class="plan-cards">
+          <form method="POST" action="/api/stripe/checkout" class="plan-card">
+            <input type="hidden" name="plan" value="monthly">
+            <h3>Monthly</h3>
+            <div class="plan-price">$2<span>/month</span></div>
+            <ul class="plan-features">
+              <li>Unlimited recipe generations</li>
+              <li>All saved recipes always accessible</li>
+              <li>Cancel anytime</li>
+            </ul>
+            <button type="submit" class="plan-btn">Subscribe monthly</button>
+          </form>
+          <form method="POST" action="/api/stripe/checkout" class="plan-card featured">
+            <input type="hidden" name="plan" value="annual">
+            <h3>Annual</h3>
+            <div class="plan-price">$20<span>/year</span></div>
+            <p class="plan-save">Save $4/year</p>
+            <ul class="plan-features">
+              <li>Unlimited recipe generations</li>
+              <li>All saved recipes always accessible</li>
+              <li>Cancel anytime</li>
+            </ul>
+            <button type="submit" class="plan-btn">Subscribe annually</button>
+          </form>
+        </div>
+        <p class="free-note">Your saved recipes are always free to access, even without a subscription.</p>
+      </div>
+    )}
+  </div>
+</body>
+</html>
