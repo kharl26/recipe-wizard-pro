@@ -22,10 +22,18 @@ export async function POST({ request, locals }) {
       });
     }
 
+    // Build the redirect URL from the Site URL env var (or x-forwarded
+    // headers on Vercel) instead of request.url, which can resolve to
+    // an internal hostname and produce localhost links.
+    const proto = request.headers.get('x-forwarded-proto') || 'https';
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
+    const origin = import.meta.env.PUBLIC_SITE_URL || `${proto}://${host}`;
+    const redirectTo = `${origin}/auth/callback`;
+
     const { error } = await locals.supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: new URL('/auth/callback', request.url).toString(),
+        emailRedirectTo: redirectTo,
       },
     });
 
