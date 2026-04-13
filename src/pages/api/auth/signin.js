@@ -38,8 +38,8 @@ export async function POST({ request, locals }) {
     });
 
     if (error) {
-      console.error('Sign-in error:', error.message);
-      return new Response(JSON.stringify({ error: 'Failed to send magic link' }), {
+      console.error('Sign-in error:', error.message, error.status, JSON.stringify(error));
+      return new Response(JSON.stringify({ error: error.message || 'Failed to send magic link' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
       });
