@@ -38,9 +38,13 @@ export async function POST({ request, locals }) {
     });
 
     if (error) {
-      console.error('Sign-in error:', error.message, error.status, JSON.stringify(error));
-      return new Response(JSON.stringify({ error: error.message || 'Failed to send magic link' }), {
-        status: 500,
+      console.error('Sign-in error:', error.message, error.status);
+      let userMessage = 'Failed to send magic link. Please try again.';
+      if (error.message?.toLowerCase().includes('rate limit')) {
+        userMessage = 'Too many sign-in attempts. Please wait about an hour before trying again — the magic link system has a limit on how many emails it can send.';
+      }
+      return new Response(JSON.stringify({ error: userMessage }), {
+        status: 429,
         headers: { 'Content-Type': 'application/json' },
       });
     }
