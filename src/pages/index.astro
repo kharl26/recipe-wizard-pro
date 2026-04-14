@@ -16,7 +16,7 @@ let pantry = [];
 let pantryItems = [];
 let people = [];
 let usage = 0;
-let usageLimit = 5;
+let usageLimit = 10;
 let tier = 'free';
 
 if (isLoggedIn && profile) {
@@ -97,7 +97,7 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
   <title>Recipe Wizard Pro</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body x-data="{ tab: 'chat', sidebarOpen: false, mode: 'include', showSignIn: false }">
+<body x-data="{ tab: 'chat', sidebarOpen: false, mode: 'include', showSignIn: false, userMenuOpen: false }">
   <script id="rw-cook-config" type="application/json" set:html={JSON.stringify(cookBucketMap)}></script>
 
   <!-- Sign-in modal overlay -->
@@ -111,6 +111,7 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
         <button type="submit" class="signin-btn">Send magic link</button>
         <div id="signin-status" class="signin-status"></div>
       </form>
+      <p class="signin-note">The email will arrive from <strong>noreply@mail.app.supabase.io</strong> (our auth provider) with a link to sign you in. Check your spam folder if you don't see it within a minute.</p>
     </div>
   </div>
 
@@ -157,11 +158,32 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
             </span>
           )}
 
-          <a href="/settings" class="header-link" title="Profile &amp; household settings">Settings</a>
-          <span class="user-email" title={user.email}>{displayName}</span>
-          <form method="POST" action="/api/auth/signout" style="display:inline">
-            <button type="submit" class="signout-btn" title="Sign out">Sign out</button>
-          </form>
+          <!-- User menu dropdown — contains settings, help, about, experience, sign out -->
+          <div class="user-menu" @click.outside="userMenuOpen = false">
+            <button type="button" class="user-menu-trigger" @click="userMenuOpen = !userMenuOpen" title={user.email}>
+              {displayName} &#9662;
+            </button>
+            <div class="user-menu-dropdown" x-show="userMenuOpen" x-cloak>
+              <div class="user-menu-header">{user.email}</div>
+              <div class="user-menu-section">
+                <label class="user-menu-label">Experience level</label>
+                <select class="user-menu-select"
+                        onchange="updateExperienceFromMenu(this.value)"
+                        value={profile?.experience}>
+                  {['novice', 'beginner', 'intermediate', 'experienced', 'expert'].map(e => (
+                    <option value={e} selected={profile?.experience === e}>{e.charAt(0).toUpperCase() + e.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+              <a href="/settings" class="user-menu-item">Settings</a>
+              <a href="/help" class="user-menu-item">Help</a>
+              <a href="/support" class="user-menu-item">About</a>
+              {profile?.tier === 'admin' && <a href="/admin" class="user-menu-item">Admin</a>}
+              <form method="POST" action="/api/auth/signout" class="user-menu-item-form">
+                <button type="submit" class="user-menu-item signout">Sign out</button>
+              </form>
+            </div>
+          </div>
         </>
       ) : (
         <>
@@ -317,7 +339,7 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
         <p class="landing-cta">
           <button type="button" class="signin-trigger large" @click="showSignIn = true">Get started — it's free</button>
         </p>
-        <p class="landing-note">5 free recipe generations per month. No credit card required.</p>
+        <p class="landing-note">10 free recipe generations per month. No credit card required.</p>
       </div>
     </div>
   )}
@@ -346,6 +368,17 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
     });
 
     Alpine.start();
+
+    // Quick experience update from the user menu
+    window.updateExperienceFromMenu = async (value) => {
+      try {
+        await fetch('/api/household/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ experience: value }),
+        });
+      } catch (err) { console.error('Experience update failed:', err); }
+    };
 
     // Sign-in handler
     window.handleSignIn = async (e) => {
@@ -608,8 +641,12 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
       if (!confirm('Delete all conversation history and start fresh? This cannot be undone.')) return;
       try {
         const resp = await fetch('/api/conversations', { method: 'DELETE' });
-        if (resp.ok) window.location.reload();
-        else alert('Failed to clear conversations.');
+        if (resp.ok) {
+          try { localStorage.removeItem('rw_recipe_shelf'); } catch {}
+          window.location.reload();
+        } else {
+          alert('Failed to clear conversations.');
+        }
       } catch (err) {
         console.error('Clear chat error:', err);
         alert('Failed to clear conversations.');
@@ -618,7 +655,30 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
 
     document.addEventListener('htmx:afterSwap', (evt) => {
       window.htmx?.process(evt.target);
+      // Persist the recipe shelf so it survives page reloads/navigation.
+      // The most recent set of 4 cards is cached in localStorage.
+      const shelf = document.getElementById('recipe-shelf');
+      if (shelf && shelf.innerHTML.trim() && shelf.querySelector('.recipe-card')) {
+        try {
+          localStorage.setItem('rw_recipe_shelf', shelf.innerHTML);
+        } catch {}
+      }
     });
+
+    // Restore cached recipe shelf on page load (if any)
+    (() => {
+      const shelf = document.getElementById('recipe-shelf');
+      if (!shelf || shelf.innerHTML.trim()) return; // already populated
+      try {
+        const cached = localStorage.getItem('rw_recipe_shelf');
+        if (cached) {
+          shelf.innerHTML = cached;
+          // Ensure HTMX + Alpine wire up the restored cards
+          if (window.Alpine) Alpine.initTree(shelf);
+          if (window.htmx) htmx.process(shelf);
+        }
+      } catch {}
+    })();
 
     scrollChat();
     document.addEventListener('visibilitychange', () => {

@@ -351,9 +351,9 @@ export function createDB(supabase, profile) {
       if (tier === 'subscriber' || tier === 'friend' || tier === 'admin') {
         return { allowed: true, tier, usage: null, limit: null };
       }
-      // Free tier: 5 per month
+      // Free tier: 10 per month
       const usage = await this.getUsage();
-      const limit = 5;
+      const limit = 10;
       if (usage >= limit) {
         return { allowed: false, reason: 'limit_reached', tier, usage, limit };
       }

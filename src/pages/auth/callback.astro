@@ -1,9 +1,6 @@
 ---
 // Magic link callback handler.
-//
-// When a user clicks the magic link in their email, Supabase redirects
-// them here with a code in the URL. We exchange the code for a session,
-// which sets the auth cookies, then redirect to the app.
+// Exchange the code for a session, then redirect to the app.
 
 const { url, cookies, request } = Astro;
 import { createServerClient } from '../../lib/supabase.js';
@@ -11,14 +8,47 @@ import { createServerClient } from '../../lib/supabase.js';
 const supabase = createServerClient(request, cookies);
 
 const code = url.searchParams.get('code');
+let error = null;
 
 if (code) {
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
-  if (error) {
-    console.error('Auth callback error:', error.message);
-    return Astro.redirect('/?auth_error=true');
+  const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+  if (exchangeError) {
+    console.error('Auth callback error:', exchangeError.message);
+    error = exchangeError.message;
   }
 }
 
-return Astro.redirect('/');
+// If no error, redirect to the app after a brief pause so the user
+// sees the "close other tab" hint.
 ---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signing you in — Recipe Wizard</title>
+  <link rel="stylesheet" href="/styles.css">
+  {!error && <meta http-equiv="refresh" content="2; url=/" />}
+</head>
+<body>
+  <div class="auth-callback-page">
+    <div class="auth-callback-card">
+      {error ? (
+        <>
+          <h2>Sign-in failed</h2>
+          <p class="error-text">{error}</p>
+          <p>The magic link may have expired or already been used. Please request a new one.</p>
+          <a href="/" class="plan-btn">Back to home</a>
+        </>
+      ) : (
+        <>
+          <h2>&#127869; Signing you in&hellip;</h2>
+          <p>You'll be redirected in a moment.</p>
+          <p class="auth-callback-hint">You can now close the original tab where you requested the magic link — this tab has you signed in.</p>
+          <p><a href="/" class="plan-btn">Continue to Recipe Wizard</a></p>
+        </>
+      )}
+    </div>
+  </div>
+</body>
+</html>

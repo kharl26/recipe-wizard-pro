@@ -103,6 +103,11 @@ const tier = profile?.tier || 'free';
       )}
 
       <h3>Invite someone</h3>
+      <p class="settings-hint" style="font-size:0.82rem; margin-bottom:8px;">
+        <strong>If they already have an account:</strong> they'll see a notification next time they sign in and can accept or decline. On accept, they move to your household.<br>
+        <strong>If they're new:</strong> they get a magic-link email to sign up. Once they complete sign-in, they're automatically placed in your household.<br>
+        In both cases, their personal preferences follow them; shared data in their old household (if any) stays behind.
+      </p>
       <form id="invite-form" class="settings-form inline-form">
         <input type="email" name="email" placeholder="friend@example.com" required>
         <button type="submit" class="plan-btn">Send invite</button>
@@ -153,6 +158,11 @@ const tier = profile?.tier || 'free';
         {people.length > 1 && ' Your household remains for the other members — your preferences and usage are removed, shared pantry/recipes stay with them.'}
         {people.length === 1 && ' Since you\'re the only member of your household, all household data (pantry, saved recipes, conversations) will be deleted too.'}
       </p>
+      <label class="settings-form-label" style="display:block; font-size:0.82rem; margin-top:8px; margin-bottom:4px; color: var(--text-muted);">
+        (Optional) Reason for leaving or suggestion to improve:
+      </label>
+      <textarea id="delete-reason" maxlength="500" rows="2" style="width:100%; padding:6px 10px; border:1px solid var(--border); border-radius:var(--radius-sm); font-family:var(--font); font-size:0.85rem; margin-bottom:8px; box-sizing:border-box;" placeholder="Your honest feedback is appreciated (max 500 chars)"></textarea>
+      <br>
       <button class="cancel-btn" onclick="deleteAccount()" style="background: #fef2f2; color: #dc2626; border-color: #fca5a5">Delete my account</button>
     </div>
   </div>
@@ -232,7 +242,7 @@ const tier = profile?.tier || 'free';
       } catch { alert('Network error.'); }
     };
 
-    // Account deletion — two-step confirmation
+    // Account deletion — two-step confirmation, with optional feedback
     window.deleteAccount = async () => {
       const first = confirm(
         'Permanently delete your account?\n\n' +
@@ -247,6 +257,19 @@ const tier = profile?.tier || 'free';
       if (typed !== 'DELETE') {
         alert('Deletion cancelled.');
         return;
+      }
+
+      // Send reason/suggestion first (if provided), before the account
+      // goes away — the message endpoint records user_email independently.
+      const reason = document.getElementById('delete-reason')?.value?.trim();
+      if (reason) {
+        try {
+          await fetch('/api/message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ context: 'deletion', message: reason }),
+          });
+        } catch {} // non-blocking
       }
 
       try {

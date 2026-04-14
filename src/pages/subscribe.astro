@@ -13,7 +13,7 @@ const tier = profile?.tier || 'free';
 const isPro = tier === 'subscriber' || tier === 'friend' || tier === 'admin';
 const db = createDB(locals.supabase, profile);
 const usage = await db.getUsage();
-const usageLimit = 5;
+const usageLimit = 10;
 
 // Check Stripe subscription status
 let subscription = null;
@@ -84,7 +84,7 @@ const displayName = profile?.display_name || user.email?.split('@')[0] || '';
       <!-- Cancellation pending -->
       <div class="subscribe-card cancelling">
         <h2>Your subscription is set to cancel</h2>
-        <p>You'll keep Pro access until <strong>{currentPeriodEnd}</strong>. After that, you'll return to the free tier (5 recipes/month).</p>
+        <p>You'll keep Pro access until <strong>{currentPeriodEnd}</strong>. After that, you'll return to the free tier (10 recipes/month).</p>
         <p>Changed your mind?</p>
         <form method="POST" action="/api/stripe/cancel">
           <input type="hidden" name="action" value="reactivate">

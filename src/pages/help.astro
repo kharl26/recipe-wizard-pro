@@ -25,14 +25,14 @@ const user = locals.user;
 
     <section>
       <h2>Getting started</h2>
-      <p>Sign in with your email — we'll send a magic link, no password needed. First time? You'll go through a short onboarding conversation where the AI learns your cooking experience, dietary preferences, favorite cuisines, and what's in your pantry.</p>
+      <p>Sign in with your email — we'll send a magic link, no password needed. First time? You'll go through a short onboarding conversation where the Wizard learns your cooking experience, dietary preferences, favorite cuisines, and what's in your pantry.</p>
     </section>
 
     <section>
       <h2>Chatting with the Wizard</h2>
-      <p>Type what you have ("chicken thighs and rice"), what you're in the mood for ("something spicy and Italian"), or just say "Surprise me!" The AI suggests 4 recipes as compact cards above the chat. Click any card to see the full recipe.</p>
+      <p>Type what you have ("chicken thighs and rice"), what you're in the mood for ("something spicy and Italian"), or just say "Surprise me!" The Wizard suggests 4 recipes as compact cards above the chat. Click any card to see the full recipe.</p>
       <ul>
-        <li><strong>Chat + Saved</strong> — AI may re-suggest your saved favorites alongside new ideas</li>
+        <li><strong>Chat + Saved</strong> — Wizard may re-suggest your saved favorites alongside new ideas</li>
         <li><strong>Chat only</strong> — only brand new recipes</li>
         <li><strong>Saved only</strong> — search your saved collection without using a generation</li>
       </ul>
@@ -55,7 +55,7 @@ const user = locals.user;
 
     <section>
       <h2>Pantry</h2>
-      <p>Open the sidebar (&#9776; button) to see and manage your pantry. Add items with the input at the top, remove with the &times; button. The confidence badge (have/likely/maybe) cycles when clicked. The AI uses your pantry to suggest recipes with what you already have.</p>
+      <p>Open the sidebar (&#9776; button) to see and manage your pantry. Add items with the input at the top, remove with the &times; button. The confidence badge (have/likely/maybe) cycles when clicked. The Wizard uses your pantry to suggest recipes with what you already have.</p>
     </section>
 
     <section>
@@ -65,13 +65,55 @@ const user = locals.user;
 
     <section>
       <h2>Free tier</h2>
-      <p>Everyone gets <strong>5 free recipe generations per month</strong>. The counter resets on the 1st of each month. Searching saved recipes, browsing, and managing your pantry don't count toward the limit. When you hit the limit, you'll see an upgrade prompt — or just wait for next month.</p>
+      <p>Everyone gets <strong>10 free recipe generations per month</strong>. The counter resets on the 1st of each month. Searching saved recipes, browsing, and managing your pantry don't count toward the limit. When you hit the limit, you'll see an upgrade prompt — or just wait for next month.</p>
     </section>
 
     <section>
       <h2>Pro subscription</h2>
       <p><strong>$2/month</strong> or <strong>$20/year</strong> for unlimited recipe generations. Cancel anytime — your subscription stays active until the end of the billing period, and your saved recipes are always accessible. Manage your subscription on the <a href="/subscribe">Subscribe page</a>.</p>
     </section>
+
+    <section class="suggestion-box">
+      <h2>Questions or suggestions?</h2>
+      <p>Drop a quick note. Messages go directly to the developer — no AI, no auto-reply.</p>
+      <form id="help-suggestion-form" onsubmit="sendSuggestion(event, 'help')">
+        <textarea name="message" maxlength="500" rows="3" placeholder="What's on your mind? (max 500 chars)" required></textarea>
+        <div class="suggestion-actions">
+          <button type="submit" class="plan-btn">Send</button>
+          <span id="help-suggestion-status" class="settings-status"></span>
+        </div>
+      </form>
+    </section>
   </div>
+
+  <script is:inline>
+    window.sendSuggestion = async (e, context) => {
+      e.preventDefault();
+      const form = e.target;
+      const status = document.getElementById(context + '-suggestion-status');
+      const message = form.message.value.trim();
+      if (!message) return;
+      try {
+        const resp = await fetch('/api/message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ context, message }),
+        });
+        const result = await resp.json();
+        if (result.ok) {
+          status.textContent = 'Thanks! Message sent.';
+          status.className = 'settings-status success';
+          form.reset();
+          setTimeout(() => { status.textContent = ''; }, 3000);
+        } else {
+          status.textContent = result.error || 'Failed to send';
+          status.className = 'settings-status error';
+        }
+      } catch {
+        status.textContent = 'Network error';
+        status.className = 'settings-status error';
+      }
+    };
+  </script>
 </body>
 </html>

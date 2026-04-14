@@ -33,20 +33,20 @@ const tier = profile?.tier || 'free';
 
     <section>
       <h2>Why it costs money</h2>
-      <p>Every time you ask for recipes, the app sends your request to an AI service (Claude by Anthropic) which generates personalized suggestions. That AI call costs real money — roughly half a cent per request. It doesn't sound like much, but it adds up:</p>
+      <p>Every time you ask for recipes, the app sends your request to an AI service (Claude by Anthropic) which generates personalized suggestions. Each request costs real money — not much individually, but it adds up:</p>
       <ul>
-        <li><strong>AI processing:</strong> ~$0.005 per recipe generation</li>
+        <li><strong>AI processing:</strong> the Wizard relies on Claude by Anthropic to generate recipes tailored to your pantry and preferences</li>
         <li><strong>Database:</strong> Supabase stores your pantry, preferences, saved recipes, and household data</li>
         <li><strong>Hosting:</strong> The app runs on Vercel so it's available from any device</li>
       </ul>
-      <p>The subscription fee ($2/month or $20/year) covers these ongoing costs. There's no venture capital, no advertising, no data selling — just a small fee to keep the lights on.</p>
+      <p>The subscription fee covers these ongoing costs. There's no venture capital, no advertising, no data selling — just a small fee to keep the lights on.</p>
     </section>
 
     <section>
       <h2>What's free, what's not</h2>
       <ul>
         <li><strong>Free forever:</strong> browsing and viewing your saved recipes, managing your pantry, household settings, searching your saved collection</li>
-        <li><strong>5 per month free:</strong> new recipe generations (asking the AI for suggestions)</li>
+        <li><strong>10 per month free:</strong> new recipe generations (asking the AI for suggestions)</li>
         <li><strong>Unlimited with Pro:</strong> $2/month or $20/year for unlimited recipe generations</li>
       </ul>
     </section>
@@ -68,14 +68,51 @@ const tier = profile?.tier || 'free';
     {tier === 'free' && user && (
       <section class="tier-message">
         <h2>Your plan</h2>
-        <p>You're on the free tier with 5 recipe generations per month. If you find Recipe Wizard useful, consider <a href="/subscribe">subscribing</a> — it's $2/month and directly covers the cost of running the AI that makes your recipes.</p>
+        <p>You're on the free tier with 10 recipe generations per month. If you find Recipe Wizard useful, consider <a href="/subscribe">subscribing</a> — it's $2/month and directly covers the cost of running the AI that makes your recipes.</p>
       </section>
     )}
 
-    <section>
-      <h2>Questions?</h2>
-      <p>Recipe Wizard is a one-person project. If you have questions, feedback, or run into issues, reach out to the developer directly. Your feedback genuinely shapes what gets built next.</p>
+    <section class="suggestion-box">
+      <h2>Questions or suggestions to improve the Wizard?</h2>
+      <p>Recipe Wizard is a one-person project. Drop a note here — your feedback genuinely shapes what gets built next.</p>
+      <form id="support-suggestion-form" onsubmit="sendSuggestion(event, 'support')">
+        <textarea name="message" maxlength="500" rows="3" placeholder="Questions, ideas, complaints, or just a hello. Max 500 chars." required></textarea>
+        <div class="suggestion-actions">
+          <button type="submit" class="plan-btn">Send</button>
+          <span id="support-suggestion-status" class="settings-status"></span>
+        </div>
+      </form>
     </section>
   </div>
+
+  <script is:inline>
+    window.sendSuggestion = async (e, context) => {
+      e.preventDefault();
+      const form = e.target;
+      const status = document.getElementById(context + '-suggestion-status');
+      const message = form.message.value.trim();
+      if (!message) return;
+      try {
+        const resp = await fetch('/api/message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ context, message }),
+        });
+        const result = await resp.json();
+        if (result.ok) {
+          status.textContent = 'Thanks! Message sent.';
+          status.className = 'settings-status success';
+          form.reset();
+          setTimeout(() => { status.textContent = ''; }, 3000);
+        } else {
+          status.textContent = result.error || 'Failed to send';
+          status.className = 'settings-status error';
+        }
+      } catch {
+        status.textContent = 'Network error';
+        status.className = 'settings-status error';
+      }
+    };
+  </script>
 </body>
 </html>
