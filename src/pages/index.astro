@@ -97,7 +97,7 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
   <title>Recipe Wizard Pro</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body x-data="{ tab: 'chat', sidebarOpen: false, mode: 'include', showSignIn: false, userMenuOpen: false }">
+<body x-data="{ tab: 'chat', sidebarOpen: false, mode: 'include', showSignIn: false, userMenuOpen: false }" data-current-user={displayName ? displayName.toLowerCase() : 'everyone'}>
   <script id="rw-cook-config" type="application/json" set:html={JSON.stringify(cookBucketMap)}></script>
 
   <!-- Sign-in modal overlay -->
@@ -139,18 +139,6 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
             <option value="new">Chat only</option>
             <option value="saved">Saved only</option>
           </select>
-
-          {people.length > 0 && (
-            <select class="header-picker-select"
-                    x-init="$el.value = $store.cook.current"
-                    @change="$store.cook.set($event.target.value)"
-                    title="Show instructions calibrated to this person's experience level">
-              <option value="everyone">Everyone (most detailed)</option>
-              {people.map(p => (
-                <option value={p.name.toLowerCase()}>{p.name} ({p.experience})</option>
-              ))}
-            </select>
-          )}
 
           {!isPro && (
             <span id="usage-counter" class="usage-counter" title="Free tier: recipe generations this month">
@@ -354,7 +342,10 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
     // Cook picker store
     const configEl = document.getElementById('rw-cook-config');
     const bucketMap = configEl ? JSON.parse(configEl.textContent) : { everyone: 'beginner' };
-    const savedCook = localStorage.getItem('rw_active_cook') || 'everyone';
+    // Default to the current user's own name/bucket so recipe instructions
+    // match their experience level by default. Falls back to saved cook, then 'everyone'.
+    const currentUserKey = document.body.dataset.currentUser || 'everyone';
+    const savedCook = localStorage.getItem('rw_active_cook') || currentUserKey;
     Alpine.store('cook', {
       current: bucketMap[savedCook] !== undefined ? savedCook : 'everyone',
       get bucket() {
@@ -369,7 +360,9 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
 
     Alpine.start();
 
-    // Quick experience update from the user menu
+    // Quick experience update from the user menu.
+    // Also updates the local bucket map so recipe instructions immediately
+    // reflect the new experience level without a reload.
     window.updateExperienceFromMenu = async (value) => {
       try {
         await fetch('/api/household/profile', {
@@ -377,6 +370,18 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ experience: value }),
         });
+        // Update bucket map for the current user so the instruction view
+        // reflects the change right away.
+        const toBucket = (e) => (e === 'novice' || e === 'beginner') ? 'beginner'
+          : e === 'intermediate' ? 'intermediate' : 'experienced';
+        const me = document.body.dataset.currentUser;
+        if (me && bucketMap[me] !== undefined) {
+          bucketMap[me] = toBucket(value);
+          if (Alpine.store('cook').current === me) {
+            // Trigger reactive re-render of x-show bindings
+            Alpine.store('cook').current = me;
+          }
+        }
       } catch (err) { console.error('Experience update failed:', err); }
     };
 

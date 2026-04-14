@@ -1,6 +1,7 @@
 import { chat } from '../../lib/ai.js';
 import { createDB } from '../../lib/db.js';
 import { escapeHtml, isInPantry, renderRecipeModalBody } from '../../lib/recipe-render.js';
+import { renderPantrySection } from '../../lib/pantry-render.js';
 
 export async function POST({ request, locals }) {
   // Auth gate
@@ -89,6 +90,12 @@ export async function POST({ request, locals }) {
     if (result.pantryUpdates.length > 0) {
       const items = result.pantryUpdates.map(u => u.item).join(', ');
       html += `<div class="update-notice pantry-notice">Pantry updated: ${escapeHtml(items)}</div>`;
+      // Out-of-band swap the pantry sidebar so the list reflects the new items
+      const pantry = await db.getPantry();
+      html += renderPantrySection(pantry).replace(
+        'id="pantry-section"',
+        'id="pantry-section" hx-swap-oob="true"'
+      );
     }
 
     if (result.preferenceUpdates.length > 0) {

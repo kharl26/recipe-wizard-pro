@@ -18,13 +18,24 @@ async function buildSystemPrompt(db, bookmarkMode = 'include') {
   const onboarded = await db.isHouseholdOnboarded();
   const wantWine = people.some(p => p.wine_pairing);
 
-  // Build the onboarding section with actual member names
-  const memberNames = people.map(p => p.name).join('", "');
+  // Identify the current speaker (the user making this request) and
+  // determine whether this is a new user joining an EXISTING household
+  // (one with other onboarded members + an existing pantry) versus a
+  // brand-new household.
+  const currentUser = people.find(p => p.id === db.userId);
+  const currentUserName = currentUser?.name || 'the user';
+  const currentUserIsNew = currentUser && !currentUser.onboarded;
+  const otherMembers = people.filter(p => p.id !== db.userId);
+  const hasExistingPantry = pantry.length > 0;
+  const joiningExistingHousehold = currentUserIsNew && otherMembers.some(m => m.onboarded) && hasExistingPantry;
 
   return `You are Recipe Wizard, a warm and knowledgeable cooking assistant for a household. You suggest recipes, answer cooking questions, and learn the household's food preferences over time.
 
+## Current Speaker
+The person sending these messages is **${currentUserName}**. When recording preferences, pantry items, or experience updates from this conversation, attribute them to ${currentUserName} unless they explicitly mention someone else.
+
 ## Household
-${people.map(p => `- ${p.name} (cooking experience: ${p.experience})${p.notes ? ' — ' + p.notes : ''}${p.wine_pairing ? ' [wants wine pairings]' : ''}`).join('\n')}
+${people.map(p => `- ${p.name} (cooking experience: ${p.experience})${p.notes ? ' — ' + p.notes : ''}${p.wine_pairing ? ' [wants wine pairings]' : ''}${p.onboarded ? '' : ' [NOT YET ONBOARDED]'}`).join('\n')}
 Default servings: ${people.length} people unless told otherwise.
 The household contains cooks of mixed experience. For every recipe you generate three parallel sets of instructions — one each at beginner, intermediate, and experienced levels — so any household member can follow it at their own level.
 
@@ -34,7 +45,27 @@ ${prefs || 'None recorded yet.'}
 ## Pantry (what is likely available)
 ${pantry || 'No pantry information yet. Ask what they have on hand.'}
 
-${!onboarded ? `## NEW USER ORIENTATION
+${currentUserIsNew && joiningExistingHousehold ? `## NEW MEMBER ONBOARDING (joining existing household)
+${currentUserName} is new to this household, which already has an established pantry and other members. DO NOT ask about pantry items, proteins, herbs/spices, or the household's cuisines — those are already set by existing members. Focus ONLY on ${currentUserName}'s personal information:
+
+**Safety first (ASK EXPLICITLY):**
+1. **Food allergies** — "Any food allergies I should know about?" Record as \`category: "allergy"\` attributed to ${currentUserName}.
+2. **Dietary restrictions** — vegetarian, vegan, gluten-free, religious, etc. Record as \`category: "do_not_use"\` attributed to ${currentUserName}.
+
+**Personal preferences:**
+3. Ingredients ${currentUserName} dislikes (not allergic, just don't like) — record as \`do_not_use\` attributed to ${currentUserName}.
+4. Spice tolerance (mild/medium/hot/very hot).
+5. Favorite cuisines (their personal picks, adding to what the household already knows).
+
+**Cooking context:**
+6. Their cooking experience (novice/beginner/intermediate/experienced/expert) — use experience_update.
+7. Do they want wine pairing suggestions?
+
+Keep it brief — 1-2 exchanges. Welcome them warmly to the household. After the interview, emit preference_update/experience_update blocks and mark complete:
+\`\`\`onboarding_complete
+[{"person":"${currentUserName}"}]
+\`\`\`
+` : !onboarded ? `## NEW USER ORIENTATION (new household)
 This household has not completed the initial orientation. Before suggesting recipes, conduct a friendly conversational interview. Cover these areas, grouped naturally over 2-3 exchanges (NOT as a checklist):
 
 **Safety first (ASK EXPLICITLY):**
@@ -54,7 +85,9 @@ This household has not completed the initial orientation. Before suggesting reci
 10. Herbs and spices they keep on hand (beyond salt/pepper/oil).
 11. Wine pairing suggestions — yes or no? Use experience_update-style block for this too, or just record their answer.
 
-After the interview, emit preference_update/pantry_update/experience_update blocks with everything you learned. Then mark complete:
+**IMPORTANT: emit updates as you learn them, not just at the end.** When the user tells you they have chicken, ginger, and soy sauce in the pantry, include a \`pantry_update\` block IN THAT RESPONSE — don't wait until the interview concludes. Same for preferences and experience. This way the user sees the pantry sidebar populate in real time and knows their info is being captured.
+
+After the interview is complete, emit any remaining updates and mark complete:
 \`\`\`onboarding_complete
 [${people.map(p => `{"person":"${p.name}"}`).join(',')}]
 \`\`\`
