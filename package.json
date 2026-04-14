@@ -7,7 +7,10 @@
     "dev": "astro dev",
     "build": "astro build",
     "start": "node dist/server/entry.mjs",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
@@ -19,5 +22,8 @@
     "astro": "^5.0.0",
     "htmx.org": "^2.0.0",
     "stripe": "^22.0.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1"
   }
 }
