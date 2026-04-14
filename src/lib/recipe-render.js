@@ -68,7 +68,7 @@ export function renderRecipeModalBody(recipe, pantryItems = []) {
     const escapedName = escapeHtml(itemName).replace(/'/g, "\\'");
     return `<li class="${inP ? 'in-pantry' : 'need-to-buy'}">
       <span class="ingredient-toggle" onclick="togglePantry(this, '${escapedName}', ${inP})"
-            title="${inP ? 'In pantry — click to mark as used up' : 'May need to buy — click to confirm you have it'}"
+            title="${inP ? 'I have this — click to mark as used up or not on hand' : 'I don&#39;t have this — keep it on the shopping list. Click to confirm you do have it.'}"
             style="cursor:pointer">${inP ? '&#9989;' : '&#128722;'}</span>
       <label class="check-row">
         <input type="checkbox">
@@ -105,7 +105,7 @@ export function renderRecipeModalBody(recipe, pantryItems = []) {
 
   return `
     <button class="modal-close" @click="showModal = false" title="Close">&times;</button>
-    <button type="button" class="kitchen-mode-toggle" onclick="toggleKitchenMode(this)" title="Toggle full-screen, large-text view for cooking">&#127859; Kitchen mode</button>
+    <button type="button" class="kitchen-mode-toggle" onclick="toggleKitchenMode(this)" title="Click for full-screen, larger font — much easier to read while you&#39;re working in the kitchen with the laptop on the counter">&#127859; Kitchen mode</button>
     <div class="recipe-modal-image">
       <span class="placeholder-cuisine">${escapeHtml(r.cuisine || 'Recipe')}</span>
       <span class="placeholder-difficulty ${difficultyClass}">${escapeHtml(r.difficulty || 'Easy')}</span>

@@ -114,7 +114,7 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
   <header>
     <div class="header-left">
       {isLoggedIn && (
-        <button class="sidebar-toggle" @click="sidebarOpen = !sidebarOpen">&#9776;</button>
+        <button class="sidebar-toggle" @click="sidebarOpen = !sidebarOpen" title="Show/hide your pantry — tracks what you have on hand in your pantry, fridge, and freezer, and whether each item is currently available">&#9776;</button>
       )}
       <h1>&#129668; Recipe Wizard</h1>
       {isPro && <span class="pro-badge">Pro</span>}
