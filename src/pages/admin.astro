@@ -25,6 +25,15 @@ const { data: allUsage } = await supabaseAdmin
   .from('user_usage')
   .select('user_id, month, count');
 
+// User messages (suggestions, deletion reasons, etc.)
+const { data: allMessages } = await supabaseAdmin
+  .from('user_messages')
+  .select('*')
+  .order('created_at', { ascending: false })
+  .limit(100);
+const messages = allMessages || [];
+const unreadCount = messages.filter(m => !m.read).length;
+
 const { data: allUsers } = await supabaseAdmin.auth.admin.listUsers();
 const users = allUsers?.users || [];
 
@@ -112,6 +121,28 @@ const userTable = profiles.map(p => {
       </div>
     </div>
 
+    <!-- User messages -->
+    {messages.length > 0 && (
+      <div class="settings-section">
+        <h2>Messages {unreadCount > 0 && <span class="unread-badge">{unreadCount} new</span>}</h2>
+        <div class="admin-messages">
+          {messages.map(m => (
+            <div class={`admin-message ${m.read ? 'read' : 'unread'}`} data-id={m.id}>
+              <div class="admin-message-meta">
+                <strong>{m.user_email || 'anonymous'}</strong>
+                <span class="admin-message-context">{m.context}</span>
+                <span class="admin-message-date">{new Date(m.created_at).toLocaleString()}</span>
+                {!m.read && (
+                  <button class="admin-message-markread" onclick={`markMessageRead('${m.id}')`}>Mark read</button>
+                )}
+              </div>
+              <p class="admin-message-body">{m.message}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
     <!-- User table -->
     <div class="settings-section">
       <h2>Users</h2>
@@ -154,6 +185,17 @@ const userTable = profiles.map(p => {
   </div>
 
   <script is:inline>
+    window.markMessageRead = async (id) => {
+      try {
+        const resp = await fetch('/api/admin/message-read', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id }),
+        });
+        if (resp.ok) location.reload();
+      } catch {}
+    };
+
     window.updateTier = async (userId, newTier) => {
       try {
         const resp = await fetch('/api/admin/tier', {

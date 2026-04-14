@@ -3,6 +3,7 @@ import { createDB } from '../lib/db.js';
 import { stripCodeBlocks } from '../lib/ai.js';
 import { renderRecipeModalBody } from '../lib/recipe-render.js';
 import { renderPantrySection } from '../lib/pantry-render.js';
+import { supabaseAdmin } from '../lib/supabase.js';
 
 const { locals } = Astro;
 const user = locals.user;
@@ -31,6 +32,17 @@ if (isLoggedIn && profile) {
 }
 
 const isPro = tier === 'subscriber' || tier === 'friend' || tier === 'admin';
+const isAdmin = tier === 'admin';
+
+// Unread message count (admin only)
+let unreadMessageCount = 0;
+if (isAdmin && supabaseAdmin) {
+  const { count } = await supabaseAdmin
+    .from('user_messages')
+    .select('id', { count: 'exact', head: true })
+    .eq('read', false);
+  unreadMessageCount = count || 0;
+}
 // New user: no conversations yet AND profile is not yet onboarded.
 // Triggers the first-login welcome nudge.
 const isNewUser = isLoggedIn && conversations.length === 0 && !profile?.onboarded;
@@ -149,7 +161,7 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
           <!-- User menu dropdown — contains settings, help, about, experience, sign out -->
           <div class="user-menu" @click.outside="userMenuOpen = false">
             <button type="button" class="user-menu-trigger" @click="userMenuOpen = !userMenuOpen" title={user.email}>
-              {displayName} &#9662;
+              {displayName}{isAdmin && unreadMessageCount > 0 && <span class="menu-dot" title={`${unreadMessageCount} unread message${unreadMessageCount === 1 ? '' : 's'}`}></span>} &#9662;
             </button>
             <div class="user-menu-dropdown" x-show="userMenuOpen" x-cloak>
               <div class="user-menu-header">{user.email}</div>
@@ -166,7 +178,12 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
               <a href="/settings" class="user-menu-item">Settings</a>
               <a href="/help" class="user-menu-item">Help</a>
               <a href="/support" class="user-menu-item">About</a>
-              {profile?.tier === 'admin' && <a href="/admin" class="user-menu-item">Admin</a>}
+              {isAdmin && (
+                <a href="/admin" class="user-menu-item admin-link">
+                  Admin
+                  {unreadMessageCount > 0 && <span class="unread-badge">{unreadMessageCount}</span>}
+                </a>
+              )}
               <form method="POST" action="/api/auth/signout" class="user-menu-item-form">
                 <button type="submit" class="user-menu-item signout">Sign out</button>
               </form>

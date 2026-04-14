@@ -2184,3 +2184,99 @@ main {
   padding-top: 12px;
   border-top: 1px solid var(--border);
 }
+
+/* Unread message indicators (admin only) */
+.unread-badge {
+  display: inline-block;
+  background: #dc2626;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  vertical-align: middle;
+  margin-left: 6px;
+  letter-spacing: 0.03em;
+}
+
+.menu-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: #dc2626;
+  border-radius: 50%;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.admin-link {
+  display: flex !important;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Admin messages section */
+.admin-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-message {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.admin-message.unread {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.admin-message-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.78rem;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.admin-message-context {
+  background: var(--elevated);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.admin-message-date {
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.admin-message-markread {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  font-family: var(--font);
+}
+
+.admin-message-markread:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.admin-message-body {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text);
+}
