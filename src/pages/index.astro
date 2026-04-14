@@ -658,8 +658,27 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
       }
     };
 
+    // Preserve pantry list scroll position across HTMX swaps.
+    // The pantry section gets replaced (outerHTML swap) on every
+    // add/remove/confidence-cycle, which resets the .pantry-list
+    // scrollTop to 0. Save it before the swap and restore after.
+    let _pantryScrollTop = 0;
+    document.addEventListener('htmx:beforeSwap', (evt) => {
+      if (evt.target?.id === 'pantry-section') {
+        const list = evt.target.querySelector('.pantry-list');
+        _pantryScrollTop = list?.scrollTop || 0;
+      }
+    });
+
     document.addEventListener('htmx:afterSwap', (evt) => {
       window.htmx?.process(evt.target);
+      // Restore pantry scroll position if we just swapped the pantry section
+      if (evt.target?.id === 'pantry-section' || document.getElementById('pantry-section') === evt.target) {
+        const list = document.querySelector('#pantry-section .pantry-list');
+        if (list && _pantryScrollTop > 0) {
+          list.scrollTop = _pantryScrollTop;
+        }
+      }
       // Persist the recipe shelf so it survives page reloads/navigation.
       // The most recent set of 4 cards is cached in localStorage.
       const shelf = document.getElementById('recipe-shelf');
