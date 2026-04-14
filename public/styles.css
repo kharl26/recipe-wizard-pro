@@ -1944,3 +1944,41 @@ main {
   border-radius: var(--radius);
   padding: 16px 20px;
 }
+
+/* First-login onboarding welcome */
+.new-user-welcome {
+  max-width: 500px;
+  margin: 20px auto;
+  padding: 32px 24px;
+  background: var(--surface-warm);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.onboarding-hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: -8px;
+  margin-bottom: 20px;
+}
+
+.onboarding-chip {
+  background: var(--accent) !important;
+  color: white !important;
+  font-size: 1rem !important;
+  padding: 10px 24px !important;
+  font-weight: 600 !important;
+  border: none !important;
+}
+
+.onboarding-chip:hover {
+  background: var(--accent-light) !important;
+}
+
+.onboarding-alt {
+  font-size: 0.82rem;
+  color: var(--text-subtle);
+  margin-top: 16px;
+}

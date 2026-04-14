@@ -31,6 +31,9 @@ if (isLoggedIn && profile) {
 }
 
 const isPro = tier === 'subscriber' || tier === 'friend' || tier === 'admin';
+// New user: no conversations yet AND profile is not yet onboarded.
+// Triggers the first-login welcome nudge.
+const isNewUser = isLoggedIn && conversations.length === 0 && !profile?.onboarded;
 
 // Cook bucket map for Alpine store
 const expToBucket = (e) => {
@@ -191,9 +194,22 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
         <div x-show="tab === 'chat'" class="chat-layout">
           <div id="recipe-shelf" class="recipe-shelf"></div>
           <div id="chat-history" class="chat-history">
-            {conversations.length === 0 && (
-              <div class="welcome-message">
+            {isNewUser ? (
+              <div class="welcome-message new-user-welcome">
                 <h2>Welcome to Recipe Wizard! &#127869;</h2>
+                <p>Let's get to know each other. I'll ask you a few quick questions — your cooking experience, dietary restrictions, allergies, favorite cuisines, and what's typically in your pantry. Takes just a couple of minutes and helps me tailor every recipe to you.</p>
+                <p class="onboarding-hint">You can always change any of this later in Settings.</p>
+                <button class="chip onboarding-chip" title="Start the conversation"
+                        hx-post="/api/chat"
+                        hx-vals='{"message":"Hi! I&#39;m ready to get started. Please ask me about my cooking preferences, dietary restrictions, allergies, favorite cuisines, and whatever else you need to know to suggest great recipes for me."}'
+                        hx-target="#chat-history" hx-swap="beforeend"
+                        hx-on::before-request="chipBusy(this)"
+                        hx-on::after-request="chipDone()">Let's begin &rarr;</button>
+                <p class="onboarding-alt">Or just start chatting about what you'd like to cook — I'll pick up your preferences along the way.</p>
+              </div>
+            ) : conversations.length === 0 ? (
+              <div class="welcome-message">
+                <h2>What's for dinner? &#127869;</h2>
                 <p>Tell me what ingredients you have, what you're in the mood for, or just say "surprise me!" I'll suggest recipes tailored to your tastes.</p>
                 <div class="suggestion-chips">
                   {pantryPick && (
@@ -218,7 +234,7 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
                           hx-on::after-request="chipDone()">{cap(shoppingPick)}</button>
                 </div>
               </div>
-            )}
+            ) : null}
             {conversations.map(c => (
               <div class={`chat-message ${c.role}-message`}>
                 <div class="message-content" set:html={c.role === 'assistant'

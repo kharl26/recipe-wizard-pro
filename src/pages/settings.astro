@@ -137,7 +137,23 @@ const tier = profile?.tier || 'free';
       <h2>Account</h2>
       <p>Signed in as <strong>{user.email}</strong></p>
       <p>Tier: <strong>{tier}</strong></p>
-      <a href="/subscribe" class="plan-btn" style="display:inline-block; text-decoration:none; text-align:center">Manage subscription</a>
+      <a href="/subscribe" class="plan-btn" style="display:inline-block; text-decoration:none; text-align:center; margin-bottom: 20px">Manage subscription</a>
+
+      <h3>Your data</h3>
+      <p class="settings-hint">
+        Your recipes, preferences, pantry, and conversations are private to you and your household. Nobody else can see them, and we don't sell or share your data with anyone. Recipe generation requests go to Anthropic's Claude API (which doesn't retain or train on your data), and payments go through Stripe.
+      </p>
+      <p>
+        <a href="/api/account/export" class="plan-btn" style="display:inline-block; text-decoration:none; text-align:center">Download all my data (JSON)</a>
+      </p>
+
+      <h3>Delete account</h3>
+      <p class="settings-hint">
+        Permanently delete your account and all your data. This cannot be undone.
+        {people.length > 1 && ' Your household remains for the other members — your preferences and usage are removed, shared pantry/recipes stay with them.'}
+        {people.length === 1 && ' Since you\'re the only member of your household, all household data (pantry, saved recipes, conversations) will be deleted too.'}
+      </p>
+      <button class="cancel-btn" onclick="deleteAccount()" style="background: #fef2f2; color: #dc2626; border-color: #fca5a5">Delete my account</button>
     </div>
   </div>
 
@@ -214,6 +230,37 @@ const tier = profile?.tier || 'free';
         if (resp.ok) location.reload();
         else alert('Failed to leave household.');
       } catch { alert('Network error.'); }
+    };
+
+    // Account deletion — two-step confirmation
+    window.deleteAccount = async () => {
+      const first = confirm(
+        'Permanently delete your account?\n\n' +
+        '• Your profile, preferences, usage history, and any active subscription will be deleted.\n' +
+        '• If you are the last member of your household, all shared data (pantry, saved recipes, conversations) will also be deleted.\n' +
+        '• This action CANNOT be undone.\n\n' +
+        'Consider downloading your data first. Continue?'
+      );
+      if (!first) return;
+
+      const typed = prompt('Type DELETE (all caps) to confirm account deletion:');
+      if (typed !== 'DELETE') {
+        alert('Deletion cancelled.');
+        return;
+      }
+
+      try {
+        const resp = await fetch('/api/account/delete', { method: 'DELETE' });
+        const result = await resp.json();
+        if (result.ok) {
+          alert('Your account has been deleted. Thank you for using Recipe Wizard.');
+          window.location.href = '/';
+        } else {
+          alert('Failed to delete account: ' + (result.error || 'Unknown error'));
+        }
+      } catch (err) {
+        alert('Network error. Please try again.');
+      }
     };
 
     // Respond to invite notification
