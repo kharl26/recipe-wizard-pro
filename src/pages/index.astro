@@ -20,6 +20,7 @@ let usage = 0;
 let usageLimit = 10;
 let tier = 'free';
 
+let householdUnlimited = false;
 if (isLoggedIn && profile) {
   const db = createDB(locals.supabase, profile);
   conversations = await db.getRecentConversations(20);
@@ -29,9 +30,12 @@ if (isLoggedIn && profile) {
   people = await db.getPeople();
   usage = await db.getUsage();
   tier = profile.tier || 'free';
+  // Check for household-level unlimited benefit
+  const gate = await db.canGenerate();
+  householdUnlimited = gate.allowed && gate.limit === null;
 }
 
-const isPro = tier === 'subscriber' || tier === 'friend' || tier === 'admin';
+const isPro = tier === 'subscriber' || tier === 'friend' || tier === 'admin' || householdUnlimited;
 const isAdmin = tier === 'admin';
 
 // Unread message count (admin only)

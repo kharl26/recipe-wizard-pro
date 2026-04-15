@@ -343,21 +343,36 @@ export function createDB(supabase, profile) {
     },
 
     // --- Usage gate: can this user generate recipes? ---
+    // Household-level benefit: if ANY member of the household has an
+    // unlimited tier (subscriber/friend/admin), all members get unlimited
+    // access. This is fairer than per-user billing for shared households
+    // and encourages one person to subscribe on behalf of the family.
 
     async canGenerate() {
       if (!profile) return { allowed: false, reason: 'not_authenticated' };
-      const tier = profile.tier || 'free';
-      // Subscribers and friends: unlimited
-      if (tier === 'subscriber' || tier === 'friend' || tier === 'admin') {
-        return { allowed: true, tier, usage: null, limit: null };
+      const myTier = profile.tier || 'free';
+      // Self unlimited: fastest path, no extra query
+      if (myTier === 'subscriber' || myTier === 'friend' || myTier === 'admin') {
+        return { allowed: true, tier: myTier, usage: null, limit: null };
+      }
+      // Household unlimited: check if any other member has unlimited tier
+      if (!needsHousehold) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('tier')
+          .eq('household_id', householdId)
+          .in('tier', ['subscriber', 'friend', 'admin']);
+        if (data && data.length > 0) {
+          return { allowed: true, tier: myTier, householdTier: data[0].tier, usage: null, limit: null };
+        }
       }
       // Free tier: 10 per month
       const usage = await this.getUsage();
       const limit = 10;
       if (usage >= limit) {
-        return { allowed: false, reason: 'limit_reached', tier, usage, limit };
+        return { allowed: false, reason: 'limit_reached', tier: myTier, usage, limit };
       }
-      return { allowed: true, tier, usage, limit };
+      return { allowed: true, tier: myTier, usage, limit };
     },
 
     // --- Feedback (deferred) ---
