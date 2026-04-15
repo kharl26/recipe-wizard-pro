@@ -72,6 +72,13 @@ const displayName = profile?.display_name || user.email?.split('@')[0] || '';
           <span>Generations this month: <strong>{usage}</strong></span>
         </div>
         <hr>
+        <p class="portal-section">
+          <strong>Manage billing:</strong> view invoices, update your payment method, or download receipts.
+        </p>
+        <form method="POST" action="/api/stripe/portal" style="margin-bottom: 16px;">
+          <button type="submit" class="plan-btn">Manage subscription &amp; billing</button>
+        </form>
+        <hr>
         <p class="cancel-section">
           Need to cancel? Your subscription will remain active until the end of the current period.
         </p>
@@ -86,9 +93,12 @@ const displayName = profile?.display_name || user.email?.split('@')[0] || '';
         <h2>Your subscription is set to cancel</h2>
         <p>You'll keep Pro access until <strong>{currentPeriodEnd}</strong>. After that, you'll return to the free tier (10 recipes/month).</p>
         <p>Changed your mind?</p>
-        <form method="POST" action="/api/stripe/cancel">
+        <form method="POST" action="/api/stripe/cancel" style="margin-bottom: 12px;">
           <input type="hidden" name="action" value="reactivate">
           <button type="submit" class="reactivate-btn">Reactivate subscription</button>
+        </form>
+        <form method="POST" action="/api/stripe/portal">
+          <button type="submit" class="cancel-btn">View invoices &amp; billing history</button>
         </form>
       </div>
     ) : tier === 'friend' ? (
