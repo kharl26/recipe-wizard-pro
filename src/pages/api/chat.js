@@ -18,6 +18,11 @@ export async function POST({ request, locals }) {
     const data = await request.formData();
     const message = data.get('message')?.trim();
     const bookmarkMode = data.get('bookmark_mode') || 'include';
+    // cooking_for is a comma-separated list of person IDs (user_ids or guest_ids)
+    const cookingForRaw = data.get('cooking_for')?.toString() || '';
+    const cookingFor = cookingForRaw
+      ? cookingForRaw.split(',').map(s => s.trim()).filter(Boolean)
+      : null;
 
     if (!message) {
       return new Response('Message is required', { status: 400 });
@@ -66,7 +71,7 @@ export async function POST({ request, locals }) {
 
     // Increment usage and call AI
     await db.incrementUsage();
-    const result = await chat(db, message, bookmarkMode);
+    const result = await chat(db, message, bookmarkMode, cookingFor);
 
     let html = '';
 

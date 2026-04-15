@@ -10,9 +10,23 @@ if (!user) return Astro.redirect('/');
 
 const db = createDB(locals.supabase, profile);
 const people = await db.getPeople();
+const guests = await db.getGuests();
+const allPreferences = await db.getPreferences();
 const pendingInvites = await db.getPendingInvites();
 const notifications = await db.getNotifications();
 const household = await db.getHousehold();
+
+// Group preferences by person/guest for display
+const prefsByPerson = {};
+for (const p of allPreferences) {
+  const key = p.user_id || p.guest_id;
+  if (!key) continue;
+  if (!prefsByPerson[key]) prefsByPerson[key] = [];
+  prefsByPerson[key].push(p);
+}
+
+// Registered household members (for merge-with-user dropdown)
+const registeredMembers = people.filter(p => !p.is_guest);
 
 const displayName = profile?.display_name || '';
 const tier = profile?.tier || 'free';
@@ -137,6 +151,111 @@ const tier = profile?.tier || 'free';
       )}
     </div>
 
+    <!-- Guest members -->
+    <div class="settings-section">
+      <h2>Guest Household Members</h2>
+      <p class="settings-hint" style="font-size:0.82rem; margin-bottom:12px;">
+        People you cook for who don't have (or don't need) their own Recipe Wizard account — kids, elderly relatives, roommates. Their allergies and preferences are used when you pick them in "Cooking for" on the chat. You can later invite them to register their own account and have their profile merged in.
+      </p>
+
+      {guests.length > 0 && (
+        <div class="member-list">
+          {guests.map(g => (
+            <div class="member-item guest-item" data-guest-id={g.id}>
+              <div class="member-info" style="flex: 1;">
+                <strong>{g.display_name}</strong>
+                <span class="member-exp">{g.experience}</span>
+                {g.wine_pairing && <span class="member-exp">🍷</span>}
+                <span class="member-exp">guest</span>
+              </div>
+              <button class="cancel-btn" onclick={`editGuest('${g.id}', '${g.display_name.replace(/'/g, "\\'")}', '${g.experience}', ${g.wine_pairing})`} style="margin-right:6px;">Edit</button>
+              <button class="cancel-btn" onclick={`removeGuest('${g.id}', '${g.display_name.replace(/'/g, "\\'")}')`}>Remove</button>
+            </div>
+          ))}
+          {guests.map(g => prefsByPerson[g.id] && prefsByPerson[g.id].length > 0 && (
+            <div class="guest-prefs" data-guest-id={g.id}>
+              <strong>{g.display_name}'s preferences:</strong>
+              <ul>
+                {prefsByPerson[g.id].map(p => (
+                  <li class={`pref-${p.category}`}>
+                    <span class="pref-category">{p.category.replace(/_/g, ' ')}</span>: {p.item}
+                    {p.detail && <em> — {p.detail}</em>}
+                    <button class="pref-remove" onclick={`removeGuestPref('${p.id}')`} title="Remove">&times;</button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <h3>Add a guest</h3>
+      <form id="guest-add-form" onsubmit="addGuest(event)">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
+          <label style="flex: 1 1 140px;">
+            Name
+            <input type="text" name="name" placeholder="Bobby, Aunt Rhonda" required maxlength="30">
+          </label>
+          <label style="flex: 1 1 140px;">
+            Cooking experience
+            <select name="experience">
+              <option value="novice">Novice</option>
+              <option value="beginner" selected>Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="experienced">Experienced</option>
+              <option value="expert">Expert</option>
+            </select>
+          </label>
+          <label class="checkbox-label" style="flex: 0 1 auto;">
+            <input type="checkbox" name="wine_pairing">
+            Wine pairings
+          </label>
+        </div>
+        <div style="margin-top:8px;">
+          <button type="submit" class="plan-btn">Add guest</button>
+          <span id="guest-add-status" class="settings-status"></span>
+        </div>
+      </form>
+
+      <h3>Add a preference or allergy for a guest</h3>
+      {guests.length === 0 ? (
+        <p class="settings-hint">Add a guest first.</p>
+      ) : (
+        <form id="guest-pref-form" onsubmit="addGuestPref(event)">
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
+            <label style="flex: 1 1 120px;">
+              Person
+              <select name="guest_id" required>
+                {guests.map(g => <option value={g.id}>{g.display_name}</option>)}
+              </select>
+            </label>
+            <label style="flex: 1 1 140px;">
+              Type
+              <select name="category">
+                <option value="allergy">Allergy (critical)</option>
+                <option value="do_not_use">Dislike/avoid</option>
+                <option value="use_sparingly">Use sparingly</option>
+                <option value="prefer">Prefers</option>
+                <option value="general">General note</option>
+              </select>
+            </label>
+            <label style="flex: 1 1 160px;">
+              Item
+              <input type="text" name="item" placeholder="shellfish, pork, spicy food..." required maxlength="80">
+            </label>
+          </div>
+          <label style="display:block; margin-top:8px;">
+            Detail (optional)
+            <input type="text" name="detail" placeholder="E.g., 'severe reaction', 'texture issue'" maxlength="200">
+          </label>
+          <div style="margin-top:8px;">
+            <button type="submit" class="plan-btn">Add preference</button>
+            <span id="guest-pref-status" class="settings-status"></span>
+          </div>
+        </form>
+      )}
+    </div>
+
     <!-- Account -->
     <div class="settings-section">
       <h2>Account</h2>
@@ -240,6 +359,94 @@ const tier = profile?.tier || 'free';
         if (resp.ok) location.reload();
         else alert('Failed to leave household.');
       } catch { alert('Network error.'); }
+    };
+
+    // --- Guest management ---
+
+    window.addGuest = async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const status = document.getElementById('guest-add-status');
+      const body = {
+        name: form.name.value.trim(),
+        experience: form.experience.value,
+        wine_pairing: form.wine_pairing.checked,
+      };
+      try {
+        const resp = await fetch('/api/guest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const result = await resp.json();
+        if (result.ok) {
+          status.textContent = 'Added!';
+          status.className = 'settings-status success';
+          form.reset();
+          setTimeout(() => location.reload(), 800);
+        } else {
+          status.textContent = result.error || 'Failed';
+          status.className = 'settings-status error';
+        }
+      } catch { status.textContent = 'Network error'; }
+    };
+
+    window.removeGuest = async (id, name) => {
+      if (!confirm(`Remove ${name} from your household? Their preferences will be deleted too.`)) return;
+      try {
+        const resp = await fetch('/api/guest?id=' + id, { method: 'DELETE' });
+        if (resp.ok) location.reload();
+      } catch { alert('Network error'); }
+    };
+
+    window.editGuest = async (id, name, experience, winePairing) => {
+      const newName = prompt('Name:', name);
+      if (!newName || newName.trim() === name) return;
+      try {
+        const resp = await fetch('/api/guest?id=' + id, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ display_name: newName.trim() }),
+        });
+        if (resp.ok) location.reload();
+      } catch { alert('Network error'); }
+    };
+
+    window.addGuestPref = async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const status = document.getElementById('guest-pref-status');
+      const body = {
+        guest_id: form.guest_id.value,
+        category: form.category.value,
+        item: form.item.value.trim(),
+        detail: form.detail.value.trim() || null,
+      };
+      try {
+        const resp = await fetch('/api/guest/preference', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const result = await resp.json();
+        if (result.ok) {
+          status.textContent = 'Added!';
+          status.className = 'settings-status success';
+          form.reset();
+          setTimeout(() => location.reload(), 800);
+        } else {
+          status.textContent = result.error || 'Failed';
+          status.className = 'settings-status error';
+        }
+      } catch { status.textContent = 'Network error'; }
+    };
+
+    window.removeGuestPref = async (id) => {
+      if (!confirm('Remove this preference?')) return;
+      try {
+        const resp = await fetch('/api/guest/preference?id=' + id, { method: 'DELETE' });
+        if (resp.ok) location.reload();
+      } catch { alert('Network error'); }
     };
 
     // Account deletion — two-step confirmation, with optional feedback

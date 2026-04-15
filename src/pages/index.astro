@@ -278,8 +278,29 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
           <form class="chat-input" hx-post="/api/chat" hx-target="#chat-history" hx-swap="beforeend"
                 hx-on::before-request="showUserMessage(this)"
                 hx-on::after-request="afterChat(this)"
-                hx-indicator="#chat-spinner">
+                hx-indicator="#chat-spinner"
+                x-data={`{ cookingFor: ['everyone'] }`}>
             <input type="hidden" name="bookmark_mode" :value="mode">
+            <input type="hidden" name="cooking_for" :value={`cookingFor.includes('everyone') ? '' : cookingFor.join(',')`}>
+
+            {people.length > 1 && (
+              <div class="cooking-for-row">
+                <span class="cooking-for-label">Cooking for:</span>
+                <label class="cook-for-chip">
+                  <input type="checkbox" value="everyone" x-model="cookingFor"
+                         @change="if ($event.target.checked) cookingFor = ['everyone']; else if (cookingFor.length === 0) cookingFor = ['everyone'];">
+                  Everyone
+                </label>
+                {people.map(p => (
+                  <label class="cook-for-chip">
+                    <input type="checkbox" value={p.id} x-model="cookingFor"
+                           @change={`if ($event.target.checked) { cookingFor = cookingFor.filter(v => v !== 'everyone'); } if (cookingFor.length === 0) cookingFor = ['everyone'];`}>
+                    {p.name}{p.is_guest ? ' (guest)' : ''}
+                  </label>
+                ))}
+              </div>
+            )}
+
             <div class="chat-input-row">
               <textarea name="message" class="chat-textarea"
                         :placeholder="mode === 'saved' ? 'Search saved (e.g. chicken, Italian, easy)...' : 'What would you like to cook?'"

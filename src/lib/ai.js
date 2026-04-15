@@ -11,17 +11,25 @@ const MODEL = 'claude-haiku-4-5-20251001';
 // Now async because all DB calls go through Supabase.
 // ---------------------------------------------------------------------------
 
-async function buildSystemPrompt(db, bookmarkMode = 'include') {
+async function buildSystemPrompt(db, bookmarkMode = 'include', cookingFor = null) {
   const people = await db.getPeople();
   const pantry = await db.getPantryForPrompt();
-  const prefs = await db.getPreferencesForPrompt();
   const onboarded = await db.isHouseholdOnboarded();
-  const wantWine = people.some(p => p.wine_pairing);
 
-  // Identify the current speaker (the user making this request) and
-  // determine whether this is a new user joining an EXISTING household
-  // (one with other onboarded members + an existing pantry) versus a
-  // brand-new household.
+  // "Cooking for" filter — if specified, restrict the audience to these
+  // people (a mix of user_ids and guest_ids). Otherwise include the whole
+  // household. This drives both the preferences list and servings count.
+  let audience = people;
+  if (Array.isArray(cookingFor) && cookingFor.length > 0) {
+    const set = new Set(cookingFor);
+    audience = people.filter(p => set.has(p.id));
+    if (audience.length === 0) audience = people; // safety fallback
+  }
+  const audienceIds = audience.map(p => p.id);
+  const prefs = await db.getPreferencesForPrompt(audienceIds);
+  const wantWine = audience.some(p => p.wine_pairing);
+
+  // Identify the current speaker
   const currentUser = people.find(p => p.id === db.userId);
   const currentUserName = currentUser?.name || 'the user';
   const currentUserIsNew = currentUser && !currentUser.onboarded;
@@ -29,14 +37,19 @@ async function buildSystemPrompt(db, bookmarkMode = 'include') {
   const hasExistingPantry = pantry.length > 0;
   const joiningExistingHousehold = currentUserIsNew && otherMembers.some(m => m.onboarded) && hasExistingPantry;
 
+  const cookingForLabel = (cookingFor && audience.length < people.length)
+    ? `Cooking for: ${audience.map(a => a.name).join(', ')} (${audience.length} ${audience.length === 1 ? 'person' : 'people'})`
+    : `Cooking for the whole household (${people.length} people)`;
+
   return `You are Recipe Wizard, a warm and knowledgeable cooking assistant for a household. You suggest recipes, answer cooking questions, and learn the household's food preferences over time.
 
 ## Current Speaker
 The person sending these messages is **${currentUserName}**. When recording preferences, pantry items, or experience updates from this conversation, attribute them to ${currentUserName} unless they explicitly mention someone else.
 
 ## Household
-${people.map(p => `- ${p.name} (cooking experience: ${p.experience})${p.notes ? ' — ' + p.notes : ''}${p.wine_pairing ? ' [wants wine pairings]' : ''}${p.onboarded ? '' : ' [NOT YET ONBOARDED]'}`).join('\n')}
-Default servings: ${people.length} people unless told otherwise.
+${people.map(p => `- ${p.name}${p.is_guest ? ' (guest — not a registered user)' : ''} (cooking experience: ${p.experience})${p.notes ? ' — ' + p.notes : ''}${p.wine_pairing ? ' [wants wine pairings]' : ''}${p.onboarded ? '' : ' [NOT YET ONBOARDED]'}`).join('\n')}
+
+**${cookingForLabel}.** Default servings: ${audience.length} unless told otherwise. Recipes must respect the preferences and allergies of everyone being cooked for (listed below). Members NOT in the cooking-for group can be ignored for this request.
 The household contains cooks of mixed experience. For every recipe you generate three parallel sets of instructions — one each at beginner, intermediate, and experienced levels — so any household member can follow it at their own level.
 
 ## Food Preferences
@@ -287,7 +300,7 @@ export function stripCodeBlocks(text) {
 // Main chat function — now accepts a db object (from createDB)
 // ---------------------------------------------------------------------------
 
-export async function chat(db, userMessage, bookmarkMode = 'include') {
+export async function chat(db, userMessage, bookmarkMode = 'include', cookingFor = null) {
   // Store user message
   await db.addConversation('user', userMessage);
 
@@ -302,7 +315,7 @@ export async function chat(db, userMessage, bookmarkMode = 'include') {
   const response = await client.messages.create({
     model: MODEL,
     max_tokens: 8192,
-    system: await buildSystemPrompt(db, bookmarkMode),
+    system: await buildSystemPrompt(db, bookmarkMode, cookingFor),
     messages,
   });
 

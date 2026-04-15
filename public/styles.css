@@ -2280,3 +2280,117 @@ main {
   line-height: 1.5;
   color: var(--text);
 }
+
+/* "Cooking for" selector above the chat input */
+.cooking-for-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+
+.cooking-for-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cook-for-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  background: var(--elevated);
+  transition: all 0.15s;
+}
+
+.cook-for-chip:has(input:checked) {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.cook-for-chip input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+/* Guest members in settings */
+.guest-item {
+  background: #fef9e7;
+  border-left: 3px solid #f59e0b;
+}
+
+.guest-prefs {
+  margin-left: 20px;
+  margin-top: 4px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+}
+
+.guest-prefs strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.78rem;
+  color: var(--accent);
+}
+
+.guest-prefs ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.guest-prefs li {
+  padding: 3px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pref-category {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--elevated);
+  color: var(--text-muted);
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+.pref-allergy .pref-category {
+  background: #fef2f2;
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.pref-do_not_use .pref-category {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.pref-remove {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--text-subtle);
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0 4px;
+}
+
+.pref-remove:hover { color: #dc2626; }

@@ -67,19 +67,43 @@ export function createDB(supabase, profile) {
 
     async getPeople() {
       if (needsHousehold) return [];
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('household_id', householdId)
-        .order('created_at');
-      return (data || []).map(p => ({
-        id: p.id,
-        name: p.display_name || p.id.slice(0, 8),
-        notes: p.notes,
-        experience: p.experience,
-        wine_pairing: p.wine_pairing,
-        onboarded: p.onboarded,
-      }));
+      const [{ data: profiles }, { data: guests }] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('household_id', householdId)
+          .order('created_at'),
+        supabase
+          .from('household_guests')
+          .select('*')
+          .eq('household_id', householdId)
+          .is('converted_to_user_id', null)
+          .order('created_at'),
+      ]);
+      const people = [];
+      for (const p of (profiles || [])) {
+        people.push({
+          id: p.id,
+          name: p.display_name || p.id.slice(0, 8),
+          notes: p.notes,
+          experience: p.experience,
+          wine_pairing: p.wine_pairing,
+          onboarded: p.onboarded,
+          is_guest: false,
+        });
+      }
+      for (const g of (guests || [])) {
+        people.push({
+          id: g.id,
+          name: g.display_name,
+          notes: g.notes,
+          experience: g.experience,
+          wine_pairing: g.wine_pairing,
+          onboarded: true, // guests don't need onboarding
+          is_guest: true,
+        });
+      }
+      return people;
     },
 
     async updatePerson(personId, fields) {
@@ -88,12 +112,25 @@ export function createDB(supabase, profile) {
       for (const [k, v] of Object.entries(fields)) {
         if (allowed.includes(k)) update[k] = v;
       }
-      // Map legacy field name
       if ('name' in fields && !('display_name' in fields)) {
         update.display_name = fields.name;
       }
       if (Object.keys(update).length === 0) return;
-      await supabase.from('profiles').update(update).eq('id', personId);
+
+      // Detect whether personId is a registered profile or a guest
+      const { data: guest } = await supabase
+        .from('household_guests')
+        .select('id')
+        .eq('id', personId)
+        .eq('household_id', householdId)
+        .maybeSingle();
+      if (guest) {
+        // Guests don't have an 'onboarded' column; drop it if present
+        delete update.onboarded;
+        await supabase.from('household_guests').update(update).eq('id', personId);
+      } else {
+        await supabase.from('profiles').update(update).eq('id', personId);
+      }
     },
 
     async isHouseholdOnboarded() {
@@ -106,35 +143,133 @@ export function createDB(supabase, profile) {
       return count === 0;
     },
 
+    // --- Guest members (non-registered household members) ---
+
+    async getGuests() {
+      if (needsHousehold) return [];
+      const { data } = await supabase
+        .from('household_guests')
+        .select('*')
+        .eq('household_id', householdId)
+        .is('converted_to_user_id', null)
+        .order('created_at');
+      return data || [];
+    },
+
+    async addGuest(name, experience = 'beginner', wine_pairing = false, notes = null) {
+      if (needsHousehold || !userId) return null;
+      const { data } = await supabase
+        .from('household_guests')
+        .insert({
+          household_id: householdId,
+          display_name: name,
+          experience,
+          wine_pairing,
+          notes,
+          added_by: userId,
+        })
+        .select()
+        .single();
+      return data;
+    },
+
+    async updateGuest(guestId, fields) {
+      const allowed = ['display_name', 'experience', 'wine_pairing', 'notes'];
+      const update = {};
+      for (const [k, v] of Object.entries(fields)) {
+        if (allowed.includes(k)) update[k] = v;
+      }
+      if (Object.keys(update).length === 0) return;
+      await supabase.from('household_guests').update(update).eq('id', guestId);
+    },
+
+    async removeGuest(guestId) {
+      await supabase.from('household_guests').delete().eq('id', guestId);
+    },
+
     // --- Preferences ---
+    //
+    // Preferences can be attached to either a registered user (user_id)
+    // or a household guest (guest_id). Both are scoped to the household.
 
     async getPreferences() {
       if (needsHousehold) return [];
-      const { data } = await supabase
+      // Fetch preferences and resolve display names from both profiles and guests
+      const { data: prefs } = await supabase
         .from('preferences')
-        .select('*, profiles!preferences_user_id_fkey(display_name)')
+        .select('*')
         .eq('household_id', householdId)
         .order('category')
         .order('item');
-      return (data || []).map(p => ({
+      if (!prefs?.length) return [];
+
+      // Resolve display names
+      const userIds = [...new Set(prefs.map(p => p.user_id).filter(Boolean))];
+      const guestIds = [...new Set(prefs.map(p => p.guest_id).filter(Boolean))];
+      const nameMap = {};
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, display_name')
+          .in('id', userIds);
+        for (const p of (profiles || [])) {
+          nameMap['u:' + p.id] = p.display_name || 'Member';
+        }
+      }
+      if (guestIds.length > 0) {
+        const { data: guests } = await supabase
+          .from('household_guests')
+          .select('id, display_name')
+          .in('id', guestIds);
+        for (const g of (guests || [])) {
+          nameMap['g:' + g.id] = g.display_name;
+        }
+      }
+      return prefs.map(p => ({
         ...p,
-        person_name: p.profiles?.display_name || 'Unknown',
+        person_name: p.user_id ? nameMap['u:' + p.user_id] : nameMap['g:' + p.guest_id] || 'Unknown',
+        is_guest: !!p.guest_id,
       }));
     },
 
-    async getPreferencesForPrompt() {
-      const prefs = await this.getPreferences();
+    async getPreferencesForPrompt(forPersonIds = null) {
+      // If forPersonIds is provided, filter to only those people (mix of
+      // user_ids and guest_ids). Otherwise include all household members.
+      let prefs = await this.getPreferences();
+      if (forPersonIds && Array.isArray(forPersonIds) && forPersonIds.length > 0) {
+        const set = new Set(forPersonIds);
+        prefs = prefs.filter(p => set.has(p.user_id) || set.has(p.guest_id));
+      }
       if (!prefs.length) return '';
       return prefs.map(p => {
-        let line = `${p.person_name}: ${p.category.replace(/_/g, ' ')} — ${p.item}`;
+        let line = `${p.person_name}${p.is_guest ? ' (guest)' : ''}: ${p.category.replace(/_/g, ' ')} — ${p.item}`;
         if (p.detail) line += ` (${p.detail})`;
         return line;
       }).join('\n');
     },
 
     async addPreference(personId, category, item, detail = null, source = null) {
+      // personId might be a user_id (auth.users) or a guest_id
+      // (household_guests). Detect by checking which table has it.
+      let userIdToUse = null;
+      let guestIdToUse = null;
+
+      // Check guests first (smaller table per household, faster)
+      const { data: guest } = await supabase
+        .from('household_guests')
+        .select('id')
+        .eq('id', personId)
+        .eq('household_id', householdId)
+        .maybeSingle();
+      if (guest) {
+        guestIdToUse = personId;
+      } else {
+        userIdToUse = personId;
+      }
+
       await supabase.from('preferences').insert({
-        user_id: personId,
+        user_id: userIdToUse,
+        guest_id: guestIdToUse,
         household_id: householdId,
         category, item, detail, source,
       });
