@@ -242,7 +242,7 @@ export function createDB(supabase, profile) {
       }
       if (!prefs.length) return '';
       return prefs.map(p => {
-        let line = `${p.person_name}${p.is_guest ? ' (guest)' : ''}: ${p.category.replace(/_/g, ' ')} — ${p.item}`;
+        let line = `${p.person_name}${p.is_guest ? ' (resident)' : ''}: ${p.category.replace(/_/g, ' ')} — ${p.item}`;
         if (p.detail) line += ` (${p.detail})`;
         return line;
       }).join('\n');

@@ -47,7 +47,7 @@ async function buildSystemPrompt(db, bookmarkMode = 'include', cookingFor = null
 The person sending these messages is **${currentUserName}**. When recording preferences, pantry items, or experience updates from this conversation, attribute them to ${currentUserName} unless they explicitly mention someone else.
 
 ## Household
-${people.map(p => `- ${p.name}${p.is_guest ? ' (guest — not a registered user)' : ''} (cooking experience: ${p.experience})${p.notes ? ' — ' + p.notes : ''}${p.wine_pairing ? ' [wants wine pairings]' : ''}${p.onboarded ? '' : ' [NOT YET ONBOARDED]'}`).join('\n')}
+${people.map(p => `- ${p.name}${p.is_guest ? ' (household resident — not a registered user, not cooking)' : ''}${p.is_guest ? '' : ' (cooking experience: ' + p.experience + ')'}${p.notes ? ' — ' + p.notes : ''}${p.wine_pairing ? ' [wants wine pairings]' : ''}${p.onboarded ? '' : ' [NOT YET ONBOARDED]'}`).join('\n')}
 
 **${cookingForLabel}.** Default servings: ${audience.length} unless told otherwise. Recipes must respect the preferences and allergies of everyone being cooked for (listed below). Members NOT in the cooking-for group can be ignored for this request.
 The household contains cooks of mixed experience. For every recipe you generate three parallel sets of instructions — one each at beginner, intermediate, and experienced levels — so any household member can follow it at their own level.

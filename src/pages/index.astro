@@ -295,7 +295,7 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
                   <label class="cook-for-chip">
                     <input type="checkbox" value={p.id} x-model="cookingFor"
                            @change={`if ($event.target.checked) { cookingFor = cookingFor.filter(v => v !== 'everyone'); } if (cookingFor.length === 0) cookingFor = ['everyone'];`}>
-                    {p.name}{p.is_guest ? ' (guest)' : ''}
+                    {p.name}
                   </label>
                 ))}
               </div>
