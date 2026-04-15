@@ -1,92 +1,127 @@
 # Recipe Wizard Pro — Multi-User Paid Recipe App
 
 ## What is this?
-Multi-user version of Recipe Wizard with authentication, household management, and subscription billing. Forked from the personal single-user Recipe Wizard (Week 5 bootcamp project) for the Week 7 "paid product" project.
+Live at **https://recipe-wizard-pro.vercel.app** — the active production app Bob and Alice use for daily cooking. Multi-user version of Recipe Wizard with authentication, household management, and subscription billing. Week 7 bootcamp project.
+
+The personal single-user Recipe Wizard (Week 5) has been retired and archived at `~/Documents/4TBSSD/recipe-wizard-old/` — do not modify it. All development happens here.
+
+## Status (2026-04-15)
+- **Deployed**: Vercel free tier, auto-deploys on git push to main
+- **Domain**: recipe-wizard-pro.vercel.app (custom domain recipewizard.aachenor.com still pending)
+- **Stripe**: sandbox/test mode (flip to live when ready for real charges)
+- **Users**: Bob (admin) + Alice (friend); household `97cf39fb-fe90-4bcf-ab50-ce75d8b87c17`
+- **Tests**: 28 Playwright tests, all passing
 
 ## Tech Stack
-- Astro 5 (SSR, `@astrojs/vercel` adapter)
-- HTMX + Alpine.js (same UI patterns as personal version)
-- Supabase (PostgreSQL + Auth + RLS)
-- Stripe (subscriptions: $2/month or $20/year)
+- Astro 5 SSR (`@astrojs/vercel` adapter)
+- HTMX + Alpine.js
+- Supabase (PostgreSQL + Auth + RLS) — project `lfzjpzpxndykomrxugon`
+- Stripe (subscriptions: $2/month or $20/year + Customer Portal)
 - Anthropic Claude Haiku 4.5 (recipe generation)
-- Vercel (hosting, free tier)
+- Vercel (hosting)
 - Playwright (testing)
 
 ## Development
 ```bash
 cd ~/Documents/4TBSSD/recipe-wizard-pro
-cp .env.example .env  # fill in real keys
 npx astro dev --port 4326
 ```
+Note: port 4326 so it doesn't conflict with the old personal instance (4325) if it ever comes back up.
 
-Port 4326 to avoid conflicting with the personal instance on 4325.
+## Running tests
+```bash
+npx playwright test               # headless
+npx playwright test --ui          # interactive
+```
+
+## Deployment
+Vercel auto-deploys on push to `main`. Environment variables are configured in Vercel dashboard.
 
 ## Architecture
 ```
 src/
   lib/
-    supabase.js        # Supabase client helpers (per-request + admin)
-    stripe.js          # Stripe checkout, subscription checks, cancellation
-    db.js              # Data access layer (Supabase queries, replaces SQLite)
-    ai.js              # Anthropic API (same as personal, but user/household-scoped)
-    recipe-render.js   # Shared recipe modal renderer (same as personal)
-    pantry-render.js   # Shared pantry sidebar renderer (same as personal)
+    supabase.js        # Per-request auth client (createServerClient) + admin client
+    stripe.js          # Checkout, subscription status, cancel/reactivate, portal
+    db.js              # createDB(supabase, profile) factory — all queries household-scoped
+    ai.js              # System prompt builder, chat, parser; accepts cookingFor filter
+    recipe-render.js   # SINGLE SOURCE OF TRUTH for recipe modal body (used everywhere)
+    pantry-render.js   # Shared pantry sidebar renderer
   pages/
-    index.astro        # Main app (same UI as personal, plus auth state)
-    auth/
-      callback.astro   # Magic link callback handler
-    subscribe.astro    # Stripe checkout + subscription management
-    help.astro         # Feature guide and UI explanation
-    support.astro      # Cost transparency page (tier-aware)
-    admin.astro        # Admin dashboard (protected — owner only)
+    index.astro        # Main app; landing when logged out, chat+saved when logged in
+    settings.astro     # Profile, household members, residents, invites, account, data
+    subscribe.astro    # Plan display, checkout, cancel, Stripe portal
+    help.astro         # Feature guide + suggestion form
+    support.astro      # Cost transparency (tier-aware) + suggestion form
+    admin.astro        # Admin dashboard (owner only): users, usage, messages, tiers
+    auth/callback.astro # Magic link exchange + "close other tab" hint
     api/
-      chat.js          # Recipe generation (auth + usage gate)
-      bookmarks.js     # Save/remove recipes (auth + household-scoped)
-      pantry.js        # Pantry CRUD (auth + household-scoped)
-      pantry-toggle.js # Ingredient toggle from recipe modal
-      conversations.js # Clear chat history
-      image.js         # Unsplash proxy
-      auth/signin.js   # Magic link send
-      auth/signout.js  # Sign out
-      household/       # Invite, accept, leave, remove
-      download.js      # Recipe download (text/JSON, individual/all)
-      share.js         # Share recipe with another user
-      stripe/
-        checkout.js    # Create checkout session
-        status.js      # Check subscription status
-        cancel.js      # Cancel/reactivate subscription
-  middleware.js        # Auth session + CSRF + user attachment
+      auth/             # signin (magic link), signout
+      chat.js           # Recipe generation (auth gate + usage gate + cookingFor)
+      bookmarks.js      # Save/remove household recipes
+      pantry.js         # POST/PATCH/DELETE — household pantry
+      pantry-toggle.js  # Ingredient toggle from recipe modal
+      conversations.js  # Clear chat history (household-scoped)
+      image.js          # Unsplash proxy (not yet configured)
+      download.js       # Recipe export (text/JSON, single/all)
+      share.js          # Share recipe with another user (by email or display_name)
+      message.js        # User feedback/suggestions → admin
+      household/        # invite, respond, leave, profile
+      guest/            # Residents: CRUD, preference, invite-to-register, merge
+      stripe/           # checkout, cancel, portal
+      account/          # export (JSON), delete
+      admin/            # tier update, message-read (admin only)
+  middleware.js         # Auth session from cookies + CSRF origin check
 supabase/
   migrations/
-    001_schema.sql     # All tables, RLS policies, indexes
-public/
-  styles.css           # Same as personal version
-.env.example           # Template for environment variables
+    001_schema.sql           # Core tables + RLS + auto-create-household trigger
+    002_allergy_category.sql # Add 'allergy' to preference categories
+    003_user_messages.sql    # Suggestions/feedback to admin
+    004_household_guests.sql # Residents + preferences.guest_id
+e2e/
+  helpers.ts          # fakeAuth, mockAiChat, mockSignIn, MOCK_RECIPES
+  01-homepage.spec.ts
+  02-signin-flow.spec.ts
+  03-static-pages.spec.ts
+  04-subscribe-page.spec.ts
+  05-api-auth-gates.spec.ts
+  06-message-api.spec.ts
+playwright.config.ts
 ```
 
-## Key Differences from Personal Version
-- **Auth required**: magic link sign-in via Supabase; unauthenticated users see login prompt
-- **Multi-tenant**: all data scoped by user_id or household_id; RLS enforced at DB level
-- **Household model**: auto-created on signup; invite others by email; shared pantry/recipes/conversations
-- **Usage tracking**: 5 free generations/month for free tier; unlimited for subscribers
-- **Stripe billing**: $2/month or $20/year; Pro badge; upgrade prompt at limit
-- **Friend tier**: manually assigned in admin; $2/month unlimited; soft nudge if API cost > $10/year
-- **Saved recipes always accessible**: free tier only gates new generation, not viewing saved recipes
-
-## Domain
-recipewizard.aachenor.com (CNAME → Vercel)
+## Key Design Decisions
+- **Single source of truth for modal rendering**: `recipe-render.js::renderRecipeModalBody()` is the ONLY place modal body HTML is built. All three historical render paths (chat card, bookmark card, settings modal) consolidated here. Lesson learned: duplicate renderers caused the same bug twice in the personal instance.
+- **Factory pattern for DB**: `createDB(supabase, profile)` returns an object with all methods pre-bound to the user's household context. Callers don't manipulate IDs.
+- **Household-level subscription benefits**: any member's active subscription grants unlimited access to ALL members. One Stripe account covers the family.
+- **Residents (non-registered household members)**: households can include people without accounts — kids, elderly relatives. Allergies/preferences tracked; "cooking for" selector filters which members' prefs apply to a given request. Residents can later be merged into a registered account.
+- **Magic link auth only**: no passwords at launch. Supabase handles session cookies (HTTP-only).
+- **Server-enforced gates**: usage limit, auth, and data access all enforced server-side in middleware + `canGenerate()`. RLS is the backstop if code has a bug.
+- **AI prompt branches onboarding**: new household gets full interview (including pantry/cuisines); user joining existing household gets personal-only interview (allergies, dislikes, experience).
+- **No recipe caching**: per-user prompts make shared caching impractical; cost-per-request is acceptable at current scale.
 
 ## Tiers
-- **free**: 5 generations/month, counter resets monthly, saved recipes always accessible
-- **subscriber**: $2/month or $20/year, unlimited generations, Pro badge
-- **friend**: admin-assigned, same price as subscriber, unlimited, soft cost nudge at $10/year
+- **free**: 10 generations/month; resets monthly; saved recipes always accessible
+- **subscriber**: $2/month or $20/year, unlimited; Pro badge
+- **friend**: admin-assigned, unlimited, $2/month-equivalent; soft nudge if API cost > $10/year
+- **admin**: unlimited + admin dashboard access
+- **Household benefit**: any unlimited member unlocks all household members
 
-## Relationship to Personal Instance
-The personal Recipe Wizard at ~/Documents/4TBSSD/recipe-wizard/ is a separate codebase:
-- Runs on localhost:4325, SQLite, no auth, no limits
-- UI/UX identical to Pro
-- Has admin dashboard that reads from Pro's production Supabase
-- Changes to shared rendering (recipe-render.js, pantry-render.js, styles.css) should be synced between both
+## Environment Variables (set in Vercel)
+- `PUBLIC_SUPABASE_URL`
+- `PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` — local only, never in Vercel (admin access)
+- `ANTHROPIC_API_KEY`
+- `STRIPE_SECRET_KEY`
+- `PUBLIC_STRIPE_PUBLISHABLE_KEY`
+- `STRIPE_PRICE_MONTHLY` / `STRIPE_PRICE_ANNUAL`
+- `PUBLIC_SITE_URL` — `https://recipe-wizard-pro.vercel.app`
 
-## Port
-4326 (dev), production on Vercel
+## Not Yet Built (Deferred)
+- Phase 10: local instance admin integration (lower priority now that personal retired)
+- Nutrition feature (physician-suggested): AI-estimated nutrition per recipe + user constraints (low sodium, max calories, diabetic-friendly)
+- Unsplash photos (real food images)
+- Custom domain: recipewizard.aachenor.com (Ionos CNAME → Vercel)
+- Guest-to-user merge UI (endpoint exists, no UI yet)
+- Switch from Stripe API check per request → webhook-based tracking
+- Stripe live mode
+- Voice interaction (Web Speech API)
