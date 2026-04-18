@@ -1,7 +1,7 @@
 // Unsplash image proxy — returns an <img> tag for the recipe card
 // Falls back to a placeholder if Unsplash key is not set or request fails
 
-const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY;
+const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY || import.meta.env.UNSPLASH_ACCESS_KEY;
 
 export async function GET({ url }) {
   const query = url.searchParams.get('q') || 'food';
