@@ -116,8 +116,10 @@ export function renderRecipeModalBody(recipe, pantryItems = []) {
   }
 
   return `
-    <button class="modal-close" @click="showModal = false" title="Close">&times;</button>
-    <button type="button" class="kitchen-mode-toggle" onclick="toggleKitchenMode(this)" title="Click for full-screen, larger font — much easier to read while you&#39;re working in the kitchen with the laptop on the counter">&#127859; Kitchen mode</button>
+    <div class="modal-controls">
+      <button type="button" class="kitchen-mode-toggle" onclick="toggleKitchenMode(this)" title="Click for full-screen, larger font — much easier to read while you&#39;re working in the kitchen with the laptop on the counter">&#127859; Kitchen mode</button>
+      <button class="modal-close" @click="showModal = false" title="Close">&times;</button>
+    </div>
     <div class="recipe-modal-image">
       <span class="placeholder-cuisine">${escapeHtml(r.cuisine || 'Recipe')}</span>
       <span class="placeholder-difficulty ${difficultyClass}">${escapeHtml(r.difficulty || 'Easy')}</span>

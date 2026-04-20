@@ -792,10 +792,21 @@ main {
   font-size: 1rem;
 }
 
+.modal-controls {
+  position: sticky;
+  top: -28px;
+  z-index: 10;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 0;
+  margin: -28px -36px 0;
+  padding: 12px 18px 8px;
+  background: var(--surface);
+}
+
 .modal-close {
-  position: absolute;
-  top: 14px;
-  right: 18px;
+  position: static;
   background: none;
   border: none;
   font-size: 1.8rem;
@@ -808,9 +819,7 @@ main {
 
 /* Kitchen mode toggle — sits next to the close X */
 .kitchen-mode-toggle {
-  position: absolute;
-  top: 18px;
-  right: 56px;
+  position: static;
   background: var(--accent-bg);
   color: var(--accent);
   border: 1px solid var(--accent);
@@ -860,7 +869,7 @@ main {
   font-size: 1.6rem;
   color: var(--accent);
   margin-bottom: 8px;
-  padding-right: 180px; /* leave room for kitchen-mode + close */
+  padding-right: 0;
 }
 
 .recipe-modal .recipe-desc {
@@ -1045,7 +1054,7 @@ main {
   font-size: 1.3rem;
 }
 
-.recipe-modal.kitchen-mode h2 { font-size: 2.2rem; padding-right: 220px; }
+.recipe-modal.kitchen-mode h2 { font-size: 2.2rem; }
 .recipe-modal.kitchen-mode h3 { font-size: 1.6rem; margin-top: 28px; }
 .recipe-modal.kitchen-mode .recipe-desc { font-size: 1.3rem; }
 
@@ -1066,8 +1075,9 @@ main {
   margin-top: 6px;
 }
 
-.recipe-modal.kitchen-mode .modal-close { font-size: 2.4rem; top: 18px; right: 24px; }
-.recipe-modal.kitchen-mode .kitchen-mode-toggle { font-size: 1rem; padding: 8px 18px; right: 70px; top: 24px; }
+.recipe-modal.kitchen-mode .modal-close { font-size: 2.4rem; }
+.recipe-modal.kitchen-mode .kitchen-mode-toggle { font-size: 1rem; padding: 8px 18px; }
+.recipe-modal.kitchen-mode .modal-controls { padding: 16px 24px 12px; }
 
 .recipe-modal.kitchen-mode .nutrition-info { padding: 16px; }
 .recipe-modal.kitchen-mode .nutrition-info h3 { font-size: 1.4rem; }
