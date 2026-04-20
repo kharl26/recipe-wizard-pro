@@ -71,6 +71,8 @@ export async function POST({ request, locals }) {
       });
     }
 
+    await db.logActivity('recipe_shared', { title: bookmark.recipe.title, recipient: recipientProfile.display_name || recipient });
+
     // Copy the recipe to the recipient's household
     const sharedBy = locals.profile.display_name || locals.user.email;
     await supabaseAdmin.from('bookmarks').insert({

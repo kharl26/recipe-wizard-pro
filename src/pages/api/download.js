@@ -47,6 +47,7 @@ export async function GET({ url, locals }) {
   const id = url.searchParams.get('id');
 
   try {
+    await db.logActivity('recipe_download', { format, all: downloadAll, bookmark_id: id || null });
     if (downloadAll) {
       const bookmarks = await db.getBookmarks();
       if (bookmarks.length === 0) {

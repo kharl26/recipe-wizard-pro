@@ -72,6 +72,7 @@ export async function POST({ request, locals }) {
 
     // Increment usage and call AI
     await db.incrementUsage();
+    await db.logActivity('chat_message', { message: message.slice(0, 200), bookmarkMode, cookingFor });
     const result = await chat(db, message, bookmarkMode, cookingFor);
 
     let html = '';
@@ -83,6 +84,7 @@ export async function POST({ request, locals }) {
     }
 
     if (result.recipes && result.recipes.length > 0) {
+      await db.logActivity('recipes_generated', { count: result.recipes.length, titles: result.recipes.map(r => r.title) });
       const pantryItems = await db.getPantryItemNames();
       const savedTitles = await getSavedTitleSet(db);
       html += `<div id="recipe-shelf" hx-swap-oob="innerHTML">

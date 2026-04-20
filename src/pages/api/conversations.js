@@ -6,6 +6,7 @@ export async function DELETE({ locals }) {
   }
   const db = createDB(locals.supabase, locals.profile);
   try {
+    await db.logActivity('chat_cleared');
     await db.clearConversations();
     return new Response(null, { status: 204 });
   } catch (err) {

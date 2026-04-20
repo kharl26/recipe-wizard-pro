@@ -15,6 +15,8 @@ export async function POST({ request, locals }) {
       return new Response('Missing item or action', { status: 400 });
     }
 
+    await db.logActivity('pantry_toggle', { item, action });
+
     if (action === 'add') {
       await db.upsertPantryItem(item, null, 'certain', null, 'user-confirmed');
     } else if (action === 'remove') {

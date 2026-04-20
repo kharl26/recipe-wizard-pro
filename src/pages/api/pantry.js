@@ -15,6 +15,7 @@ export async function POST({ request, locals }) {
     const data = await request.formData();
     const item = data.get('item')?.toString().trim();
     if (!item) return new Response('Missing item', { status: 400 });
+    await db.logActivity('pantry_add', { item });
     await db.upsertPantryItem(item, null, 'certain', null, 'sidebar-add');
     return htmlResponse(db);
   } catch (err) {
@@ -32,6 +33,7 @@ export async function PATCH({ url, locals }) {
     if (!item || !confidence) return new Response('Missing item or confidence', { status: 400 });
     const valid = ['certain', 'likely', 'maybe'];
     if (!valid.includes(confidence)) return new Response('Invalid confidence', { status: 400 });
+    await db.logActivity('pantry_update', { item, confidence });
     const row = await db.getPantryItemByName(item);
     if (row) await db.updatePantryConfidence(row.id, confidence);
     return htmlResponse(db);
@@ -47,6 +49,7 @@ export async function DELETE({ url, locals }) {
   try {
     const item = url.searchParams.get('item')?.trim();
     if (!item) return new Response('Missing item', { status: 400 });
+    await db.logActivity('pantry_remove', { item });
     const row = await db.getPantryItemByName(item);
     if (row) await db.removePantryItem(row.id);
     return htmlResponse(db);

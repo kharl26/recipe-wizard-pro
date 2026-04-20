@@ -44,6 +44,8 @@ export async function POST({ request, locals }) {
       update.show_photos = !!body.show_photos;
     }
 
+    await db.logActivity('profile_update', update);
+
     if (Object.keys(update).length > 0) {
       const { error } = await locals.supabase
         .from('profiles')

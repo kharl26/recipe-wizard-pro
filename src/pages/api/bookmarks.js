@@ -53,6 +53,7 @@ export async function POST({ request, locals }) {
     } else {
       return new Response('Missing recipe', { status: 400 });
     }
+    await db.logActivity('recipe_saved', { title: recipe.title });
     const result = await db.addBookmark(recipe);
     const bookmarks = await db.getBookmarks();
     const count = bookmarks.length;
@@ -92,6 +93,7 @@ export async function DELETE({ url, locals }) {
   const db = createDB(locals.supabase, locals.profile);
   const id = url.searchParams.get('id');
   if (!id) return new Response('Missing id', { status: 400 });
+  await db.logActivity('recipe_removed', { bookmark_id: id });
   await db.removeBookmark(id);
   const count = (await db.getBookmarks()).length;
   return new Response(
