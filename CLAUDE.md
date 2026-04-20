@@ -115,12 +115,14 @@ playwright.config.ts
 - `PUBLIC_STRIPE_PUBLISHABLE_KEY`
 - `STRIPE_PRICE_MONTHLY` / `STRIPE_PRICE_ANNUAL`
 - `PUBLIC_SITE_URL` — `https://recipe-wizard-pro.vercel.app`
+- `UNSPLASH_ACCESS_KEY` — Unsplash API key for food photos (set in Vercel dashboard)
 
 ## Not Yet Built (Deferred)
 - Phase 10: local instance admin integration (lower priority now that personal retired)
-- Nutrition feature (physician-suggested): AI-estimated nutrition per recipe + user constraints (low sodium, max calories, diabetic-friendly)
-- Unsplash photos (real food images)
+- Dietary constraint preferences: user-specified constraints like "low sodium", "max 500 cal", "diabetic-friendly" that feed into recipe generation (nutrition display is built; constraint filtering is not yet)
+- AI-generated food photos (DALL-E/Flux): separate photo_style setting with per-generation cost; tier add-on pricing TBD
 - Custom domain: recipewizard.aachenor.com (Ionos CNAME → Vercel)
+- Sticky modal controls (Kitchen Mode + close visible on scroll) — CSS sticky broken by Alpine.js x-show transitions; needs JavaScript approach
 - Guest-to-user merge UI (endpoint exists, no UI yet)
 - Switch from Stripe API check per request → webhook-based tracking
 - Stripe live mode
