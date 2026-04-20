@@ -120,6 +120,7 @@ export function renderRecipeModalBody(recipe, pantryItems = []) {
       <button type="button" class="kitchen-mode-toggle" onclick="toggleKitchenMode(this)" title="Click for full-screen, larger font — much easier to read while you&#39;re working in the kitchen with the laptop on the counter">&#127859; Kitchen mode</button>
       <button class="modal-close" @click="showModal = false" title="Close">&times;</button>
     </div>
+    <div class="modal-body">
     <div class="recipe-modal-image">
       <span class="placeholder-cuisine">${escapeHtml(r.cuisine || 'Recipe')}</span>
       <span class="placeholder-difficulty ${difficultyClass}">${escapeHtml(r.difficulty || 'Easy')}</span>
@@ -162,5 +163,6 @@ export function renderRecipeModalBody(recipe, pantryItems = []) {
     <div class="wine-pairing">
       <h3>&#127863; Wine Pairing</h3>
       <p>${escapeHtml(r.winePairing)}</p>
-    </div>` : ''}`;
+    </div>` : ''}
+    </div>`;
 }
