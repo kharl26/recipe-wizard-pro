@@ -89,6 +89,10 @@ const tier = profile?.tier || 'free';
           <input type="checkbox" name="wine_pairing" checked={profile?.wine_pairing}>
           Wine pairing suggestions
         </label>
+        <label class="checkbox-label">
+          <input type="checkbox" name="show_photos" checked={profile?.show_photos}>
+          Show food photos on recipe cards
+        </label>
         <button type="submit" class="plan-btn">Save profile</button>
         <span id="profile-status" class="settings-status"></span>
       </form>
@@ -266,6 +270,7 @@ const tier = profile?.tier || 'free';
         display_name: form.display_name.value.trim() || null,
         experience: form.experience.value,
         wine_pairing: form.wine_pairing.checked,
+        show_photos: form.show_photos.checked,
       };
       try {
         const resp = await fetch('/api/household/profile', {

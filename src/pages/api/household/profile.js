@@ -40,6 +40,9 @@ export async function POST({ request, locals }) {
     if ('wine_pairing' in body) {
       update.wine_pairing = !!body.wine_pairing;
     }
+    if ('show_photos' in body) {
+      update.show_photos = !!body.show_photos;
+    }
 
     if (Object.keys(update).length > 0) {
       const { error } = await locals.supabase

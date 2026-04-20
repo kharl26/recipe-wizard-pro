@@ -131,6 +131,19 @@ export function renderRecipeModalBody(recipe, pantryItems = []) {
         <ol class="instruction-list" x-show="$store.cook.bucket === 'experienced'" x-cloak>${instructionHtml(experienced)}</ol>
       </div>
     </div>
+    ${r.nutrition ? `
+    <div class="nutrition-info">
+      <h3>Nutrition <span class="nutrition-per-serving">(per serving)</span></h3>
+      <div class="nutrition-grid">
+        <div class="nut-item"><span class="nut-value">${r.nutrition.calories}</span><span class="nut-label">cal</span></div>
+        <div class="nut-item"><span class="nut-value">${r.nutrition.protein_g}g</span><span class="nut-label">protein</span></div>
+        <div class="nut-item"><span class="nut-value">${r.nutrition.carbs_g}g</span><span class="nut-label">carbs</span></div>
+        <div class="nut-item"><span class="nut-value">${r.nutrition.fat_g}g</span><span class="nut-label">fat</span></div>
+        <div class="nut-item"><span class="nut-value">${r.nutrition.fiber_g}g</span><span class="nut-label">fiber</span></div>
+        <div class="nut-item"><span class="nut-value">${r.nutrition.sodium_mg}mg</span><span class="nut-label">sodium</span></div>
+      </div>
+      <p class="nutrition-disclaimer">Estimates based on USDA reference data. Not lab-tested.</p>
+    </div>` : ''}
     ${r.winePairing ? `
     <div class="wine-pairing">
       <h3>&#127863; Wine Pairing</h3>

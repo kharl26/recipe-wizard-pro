@@ -1069,6 +1069,74 @@ main {
 .recipe-modal.kitchen-mode .modal-close { font-size: 2.4rem; top: 18px; right: 24px; }
 .recipe-modal.kitchen-mode .kitchen-mode-toggle { font-size: 1rem; padding: 8px 18px; right: 70px; top: 24px; }
 
+.recipe-modal.kitchen-mode .nutrition-info { padding: 16px; }
+.recipe-modal.kitchen-mode .nutrition-info h3 { font-size: 1.4rem; }
+.recipe-modal.kitchen-mode .nut-value { font-size: 1.4rem; }
+.recipe-modal.kitchen-mode .nut-label { font-size: 0.85rem; }
+.recipe-modal.kitchen-mode .nutrition-disclaimer { font-size: 0.85rem; }
+
+.nutrition-info {
+  margin-top: 16px;
+  padding: 12px;
+  background: #f0f7f4;
+  border: 1px solid #d1e7dd;
+  border-radius: var(--radius-sm);
+}
+
+.nutrition-info h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  color: #1a5632;
+  font-size: 1rem;
+}
+
+.nutrition-per-serving {
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.nutrition-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  text-align: center;
+}
+
+.nut-item {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 4px;
+  background: #fff;
+  border-radius: var(--radius-sm);
+  border: 1px solid #e0eed8;
+}
+
+.nut-value {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #1a5632;
+}
+
+.nut-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.nutrition-disclaimer {
+  margin: 6px 0 0;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+@media (max-width: 480px) {
+  .nutrition-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
 
 .wine-pairing {
   margin-top: 16px;

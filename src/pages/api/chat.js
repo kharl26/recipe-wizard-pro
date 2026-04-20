@@ -13,6 +13,7 @@ export async function POST({ request, locals }) {
   }
 
   const db = createDB(locals.supabase, locals.profile);
+  const showPhotos = !!locals.profile?.show_photos;
 
   try {
     const data = await request.formData();
@@ -48,7 +49,7 @@ export async function POST({ request, locals }) {
           <div class="recipe-grid shelf-grid">`;
         const savedTitles = await getSavedTitleSet(db);
         for (const b of shown) {
-          html += renderRecipeCard(b.recipe, pantryItems, savedTitles);
+          html += renderRecipeCard(b.recipe, pantryItems, savedTitles, showPhotos);
         }
         html += '</div></div>';
       }
@@ -77,7 +78,7 @@ export async function POST({ request, locals }) {
 
     if (result.text) {
       html += `<div class="chat-message assistant-message">
-        <div class="message-content">${escapeHtml(result.text).replace(/\n/g, '<br>')}</div>
+        <div class="message-content">${renderChatMarkdown(result.text)}</div>
       </div>`;
     }
 
@@ -87,7 +88,7 @@ export async function POST({ request, locals }) {
       html += `<div id="recipe-shelf" hx-swap-oob="innerHTML">
         <div class="recipe-grid shelf-grid">`;
       for (const recipe of result.recipes) {
-        html += renderRecipeCard(recipe, pantryItems, savedTitles);
+        html += renderRecipeCard(recipe, pantryItems, savedTitles, showPhotos);
       }
       html += '</div></div>';
     }
@@ -128,6 +129,19 @@ export async function POST({ request, locals }) {
   }
 }
 
+function renderChatMarkdown(text) {
+  return escapeHtml(text)
+    .replace(/^### (.+)$/gm, '<strong>$1</strong>')
+    .replace(/^## (.+)$/gm, '<strong>$1</strong>')
+    .replace(/^# (.+)$/gm, '<strong>$1</strong>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^---$/gm, '<hr>')
+    .replace(/^[-•] (.+)$/gm, '&bull; $1')
+    .replace(/^\d+\. (.+)$/gm, (_, content) => `&bull; ${content}`)
+    .replace(/\n/g, '<br>');
+}
+
 async function getSavedTitleSet(db) {
   const bookmarks = await db.getBookmarks();
   return new Set(bookmarks.map(b => (b.recipe.title || '').toLowerCase().trim()));
@@ -145,7 +159,7 @@ function isSaved(recipe, savedTitles) {
   return false;
 }
 
-function renderRecipeCard(recipe, pantryItems = [], savedTitles = new Set()) {
+function renderRecipeCard(recipe, pantryItems = [], savedTitles = new Set(), showPhotos = false) {
   const difficultyClass = (recipe.difficulty || 'Easy').toLowerCase();
   const recipeB64 = Buffer.from(JSON.stringify(recipe)).toString('base64');
   const ingredients = recipe.ingredients || [];
@@ -154,7 +168,7 @@ function renderRecipeCard(recipe, pantryItems = [], savedTitles = new Set()) {
 
   return `
     <div class="recipe-card" x-data="{ showModal: false }">
-      <div class="recipe-card-img"
+      ${showPhotos ? `<div class="recipe-card-img"
            hx-get="/api/image?q=${encodeURIComponent(recipe.title + ' food dish')}"
            hx-trigger="intersect once"
            hx-swap="innerHTML">
@@ -162,7 +176,12 @@ function renderRecipeCard(recipe, pantryItems = [], savedTitles = new Set()) {
           <span class="placeholder-cuisine">${escapeHtml(recipe.cuisine || 'Recipe')}</span>
           <span class="placeholder-difficulty ${difficultyClass}">${escapeHtml(recipe.difficulty || 'Easy')}</span>
         </div>
-      </div>
+      </div>` : `<div class="recipe-card-img">
+        <div class="img-placeholder recipe-placeholder">
+          <span class="placeholder-cuisine">${escapeHtml(recipe.cuisine || 'Recipe')}</span>
+          <span class="placeholder-difficulty ${difficultyClass}">${escapeHtml(recipe.difficulty || 'Easy')}</span>
+        </div>
+      </div>`}
       <div class="recipe-card-body" @click="showModal = true">
         <h3 class="recipe-title">${escapeHtml(recipe.title)}</h3>
         <p class="recipe-desc">${escapeHtml(recipe.description)}</p>

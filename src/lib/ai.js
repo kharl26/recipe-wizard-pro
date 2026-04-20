@@ -126,6 +126,14 @@ When asked for recipes, ALWAYS respond with a JSON block containing exactly 4 re
       "instructions": ["Beginner step 1 with terms defined and sensory cues...", "Beginner step 2...", ...],
       "instructions_intermediate": ["Intermediate step 1, standard terms with timing...", "Intermediate step 2...", ...],
       "instructions_experienced": ["Concise expert step 1...", "Concise expert step 2...", ...],
+      "nutrition": {
+        "calories": 650,
+        "protein_g": 32,
+        "carbs_g": 52,
+        "fat_g": 28,
+        "fiber_g": 4,
+        "sodium_mg": 840
+      },
       "winePairing": "Suggested wine or null"
     }
   ]
@@ -148,6 +156,9 @@ The three instruction arrays describe the SAME recipe at three writing levels. T
    - **\`instructions_experienced\`**: Concise. Assume knowledge of techniques and equipment. "Sauté onion until translucent. Add garlic; cook briefly. Deglaze with wine."
 4. **Temperature**: Always specify heat level (low, medium-low, medium, medium-high, high) and oven temperatures in °F. Include in all three sets.
 5. **Same recipe, three voices**: The intermediate and experienced sets cover the SAME steps in the SAME order as beginner — they are not abbreviated by dropping steps. They are the same instructions written more concisely.
+
+### Nutrition Estimates
+Include a "nutrition" object in each recipe with per-serving estimates for: calories, protein_g, carbs_g, fat_g, fiber_g, sodium_mg. Base estimates on USDA FoodData Central reference values for the ingredients and quantities listed. These are estimates, not lab-tested values — be reasonable, not precise. All values are integers (no decimals). Always include this field; never set it to null.
 
 ${wantWine ? `### Wine Pairing
 Include a "winePairing" field in each recipe JSON with a specific wine suggestion (grape, region, and style). Example: "A medium-bodied Côtes du Rhône or Grenache blend pairs well with the herbs and tomato base." If no good pairing exists for a dish, set to null.` : `### Wine Pairing
