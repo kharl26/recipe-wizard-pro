@@ -464,25 +464,38 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
     };
 
     // Copy shopping list
-    window.copyShoppingList = (btn, count) => {
+    window.copyShoppingList = (btn) => {
       try {
-        const text = atob(btn.dataset.list);
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
-        ta.style.left = '-9999px';
-        ta.style.top = '-9999px';
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-        const ok = document.execCommand('copy');
-        document.body.removeChild(ta);
-        btn.textContent = ok ? 'Copied!' : 'Copy failed';
-        setTimeout(() => btn.innerHTML = '&#128203; Copy shopping list (' + count + ' items)', 1500);
+        const modal = btn.closest('.recipe-modal');
+        const title = modal?.querySelector('h2')?.textContent || 'Recipe';
+        const items = Array.from(modal?.querySelectorAll('li.need-to-buy .check-text') || [])
+          .map(el => el.textContent.trim())
+          .filter(Boolean);
+        if (items.length === 0) {
+          btn.textContent = 'Nothing to buy!';
+          setTimeout(() => btn.innerHTML = '&#128203; Copy shopping list (0 items)', 1500);
+          return;
+        }
+        const text = 'Shopping list for ' + title + '\n' + items.map(i => '- ' + i).join('\n');
+        navigator.clipboard.writeText(text).then(() => {
+          btn.textContent = 'Copied!';
+          setTimeout(() => btn.innerHTML = '&#128203; Copy shopping list (' + items.length + ' items)', 1500);
+        }).catch(() => {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.left = '-9999px';
+          document.body.appendChild(ta);
+          ta.focus(); ta.select();
+          const ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          btn.textContent = ok ? 'Copied!' : 'Copy failed';
+          setTimeout(() => btn.innerHTML = '&#128203; Copy shopping list (' + items.length + ' items)', 1500);
+        });
       } catch (err) {
         console.error('Copy error:', err);
         btn.textContent = 'Copy failed';
-        setTimeout(() => btn.innerHTML = '&#128203; Copy shopping list (' + count + ' items)', 1500);
+        setTimeout(() => btn.innerHTML = '&#128203; Copy shopping list (0 items)', 1500);
       }
     };
 
@@ -599,16 +612,10 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
             const slActions = modal.querySelector('.shopping-list-actions');
             const allInPantry = modal.querySelector('.all-in-pantry');
             if (needCount > 0) {
-              const items = Array.from(modal.querySelectorAll('li.need-to-buy'))
-                .map(li => '- ' + (li.querySelector('.check-text')?.textContent?.trim() || ''));
-              const title = modal.querySelector('h2')?.textContent || 'Recipe';
-              const listText = 'Shopping list for ' + title + '\n' + items.join('\n');
-              const b64 = btoa(listText);
               if (slBtn) {
-                slBtn.dataset.list = b64;
                 slBtn.innerHTML = '&#128203; Copy shopping list (' + needCount + ' items)';
               } else if (allInPantry) {
-                allInPantry.outerHTML = '<div class="shopping-list-actions"><button class="shopping-list-btn" data-list="' + b64 + '" onclick="copyShoppingList(this, ' + needCount + ')">&#128203; Copy shopping list (' + needCount + ' items)</button></div>';
+                allInPantry.outerHTML = '<div class="shopping-list-actions"><button class="shopping-list-btn" onclick="copyShoppingList(this)">&#128203; Copy shopping list (' + needCount + ' items)</button></div>';
               }
             } else {
               if (slActions) {
