@@ -1,6 +1,6 @@
 import { chat } from '../../lib/ai.js';
 import { createDB } from '../../lib/db.js';
-import { escapeHtml, isInPantry, renderRecipeModalBody } from '../../lib/recipe-render.js';
+import { escapeHtml, isInPantry, renderRecipeModalBody, renderChatMarkdown } from '../../lib/recipe-render.js';
 import { renderPantrySection } from '../../lib/pantry-render.js';
 
 export async function POST({ request, locals }) {
@@ -127,19 +127,6 @@ export async function POST({ request, locals }) {
       { status: 200, headers: { 'Content-Type': 'text/html' } }
     );
   }
-}
-
-function renderChatMarkdown(text) {
-  return escapeHtml(text)
-    .replace(/^### (.+)$/gm, '<strong>$1</strong>')
-    .replace(/^## (.+)$/gm, '<strong>$1</strong>')
-    .replace(/^# (.+)$/gm, '<strong>$1</strong>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/^---$/gm, '<hr>')
-    .replace(/^[-•] (.+)$/gm, '&bull; $1')
-    .replace(/^\d+\. (.+)$/gm, (_, content) => `&bull; ${content}`)
-    .replace(/\n/g, '<br>');
 }
 
 async function getSavedTitleSet(db) {

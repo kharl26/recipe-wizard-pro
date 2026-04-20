@@ -45,6 +45,19 @@ export function isInPantry(ingredientLine, pantryItems = []) {
   return pantryItems.some(item => wordMatch(line, item));
 }
 
+export function renderChatMarkdown(text) {
+  return escapeHtml(text)
+    .replace(/^### (.+)$/gm, '<strong>$1</strong>')
+    .replace(/^## (.+)$/gm, '<strong>$1</strong>')
+    .replace(/^# (.+)$/gm, '<strong>$1</strong>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^---$/gm, '<hr>')
+    .replace(/^[-•] (.+)$/gm, '&bull; $1')
+    .replace(/^\d+\. (.+)$/gm, (_, content) => `&bull; ${content}`)
+    .replace(/\n/g, '<br>');
+}
+
 // Build the inner HTML of a recipe modal — image placeholder, title,
 // description, meta, ingredient checkboxes, shopping list, three instruction
 // lists (one per experience bucket, gated by Alpine $store.cook.bucket), and

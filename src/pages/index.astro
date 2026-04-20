@@ -1,7 +1,7 @@
 ---
 import { createDB } from '../lib/db.js';
 import { stripCodeBlocks } from '../lib/ai.js';
-import { renderRecipeModalBody } from '../lib/recipe-render.js';
+import { renderRecipeModalBody, renderChatMarkdown } from '../lib/recipe-render.js';
 import { renderPantrySection } from '../lib/pantry-render.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 
@@ -269,8 +269,8 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
             {conversations.map(c => (
               <div class={`chat-message ${c.role}-message`}>
                 <div class="message-content" set:html={c.role === 'assistant'
-                  ? stripCodeBlocks(c.content).replace(/\n/g, '<br>')
-                  : c.content.replace(/\n/g, '<br>')} />
+                  ? renderChatMarkdown(stripCodeBlocks(c.content))
+                  : c.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')} />
               </div>
             ))}
           </div>
