@@ -47,14 +47,13 @@ export function isInPantry(ingredientLine, pantryItems = []) {
 
 export function renderChatMarkdown(text) {
   return escapeHtml(text)
-    .replace(/^### (.+)$/gm, '<strong>$1</strong>')
-    .replace(/^## (.+)$/gm, '<strong>$1</strong>')
-    .replace(/^# (.+)$/gm, '<strong>$1</strong>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/^---$/gm, '<hr>')
-    .replace(/^[-•] (.+)$/gm, '&bull; $1')
-    .replace(/^\d+\. (.+)$/gm, (_, content) => `&bull; ${content}`)
+    .replace(/^#{1,3}\s+/gm, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/^---$/gm, '')
+    .replace(/^[-•]\s+/gm, '')
+    .replace(/^\d+\.\s+/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
     .replace(/\n/g, '<br>');
 }
 
