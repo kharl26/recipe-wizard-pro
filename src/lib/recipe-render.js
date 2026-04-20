@@ -106,7 +106,7 @@ export function renderRecipeModalBody(recipe, pantryItems = []) {
 
   let shoppingHtml;
   if (needToBuyCount > 0) {
-    const listText = `Shopping list for ${r.title}\n${needToBuy.map(i => '- ' + i).join('\n')}`;
+    const listText = `Shopping list for ${r.title}\n${needToBuy.map(i => '- ' + extractItemName(i)).join('\n')}`;
     const listB64 = Buffer.from(listText).toString('base64');
     shoppingHtml = `<div class="shopping-list-actions">
       <button class="shopping-list-btn" data-list="${listB64}" onclick="copyShoppingList(this, ${needToBuyCount})">&#128203; Copy shopping list (${needToBuyCount} items)</button>
