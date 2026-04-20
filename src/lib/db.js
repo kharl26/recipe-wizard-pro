@@ -584,6 +584,18 @@ export function createDB(supabase, profile) {
       return data || [];
     },
 
+    // --- Activity Logging ---
+
+    async logActivity(action, detail = null) {
+      if (!userId || !profile?.beta_tester) return;
+      await supabase.from('activity_log').insert({
+        user_id: userId,
+        household_id: householdId || null,
+        action,
+        detail,
+      }).then(() => {}).catch(() => {});
+    },
+
     // Expose context for callers that need it
     userId,
     householdId,

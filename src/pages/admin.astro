@@ -19,7 +19,7 @@ if (!supabaseAdmin) {
 // Fetch all data for the dashboard
 const { data: allProfiles } = await supabaseAdmin
   .from('profiles')
-  .select('id, display_name, household_id, experience, tier, onboarded, created_at');
+  .select('id, display_name, household_id, experience, tier, beta_tester, onboarded, created_at');
 
 const { data: allUsage } = await supabaseAdmin
   .from('user_usage')
@@ -45,6 +45,14 @@ const { data: allHouseholds } = await supabaseAdmin
   .from('households')
   .select('id', { count: 'exact', head: true });
 
+// Activity log (recent 200 entries from beta testers)
+const { data: activityData } = await supabaseAdmin
+  .from('activity_log')
+  .select('*')
+  .order('created_at', { ascending: false })
+  .limit(200);
+const activityLog = activityData || [];
+
 // Build stats
 const currentMonth = new Date().toISOString().slice(0, 7);
 const profiles = allProfiles || [];
@@ -69,12 +77,13 @@ const userTable = profiles.map(p => {
     email: authUser?.email || '?',
     display_name: p.display_name || '-',
     tier: p.tier,
+    beta_tester: p.beta_tester || false,
     experience: p.experience,
     this_month: monthUsage?.count || 0,
     total: totalUsage,
     est_cost: (totalUsage * 0.005).toFixed(2),
     created: new Date(p.created_at).toLocaleDateString(),
-    cost_flag: totalUsage * 0.005 > 10, // flag if > $10 annual cost
+    cost_flag: totalUsage * 0.005 > 10,
   };
 }).sort((a, b) => b.total - a.total);
 ---
@@ -155,6 +164,7 @@ const userTable = profiles.map(p => {
             <th>All time</th>
             <th>Est. cost</th>
             <th>Joined</th>
+            <th>Beta</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -176,11 +186,49 @@ const userTable = profiles.map(p => {
               <td>{u.total}</td>
               <td class={u.cost_flag ? 'cost-warning' : ''}>${u.est_cost}{u.cost_flag && ' ⚠'}</td>
               <td>{u.created}</td>
+              <td>
+                <label class="beta-toggle" title="Toggle beta tester logging">
+                  <input type="checkbox" checked={u.beta_tester} onchange={`toggleBeta('${u.id}', this.checked)`}>
+                  <span class="beta-label">{u.beta_tester ? 'On' : 'Off'}</span>
+                </label>
+              </td>
               <td><span class="admin-id">{u.id.slice(0, 8)}</span></td>
             </tr>
           ))}
         </tbody>
       </table>
+    </div>
+
+    <!-- Activity Log -->
+    <div class="settings-section">
+      <h2>Beta Tester Activity</h2>
+      {activityLog.length === 0 ? (
+        <p class="settings-hint">No activity logged yet. Enable beta tester on a user above to start logging.</p>
+      ) : (
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Action</th>
+              <th>Detail</th>
+              <th>When</th>
+            </tr>
+          </thead>
+          <tbody>
+            {activityLog.map(a => {
+              const u = userTable.find(u => u.id === a.user_id);
+              return (
+                <tr>
+                  <td>{u?.display_name || a.user_id.slice(0, 8)}</td>
+                  <td><span class="activity-action">{a.action}</span></td>
+                  <td class="activity-detail">{a.detail ? JSON.stringify(a.detail).slice(0, 120) : '-'}</td>
+                  <td class="activity-time">{new Date(a.created_at).toLocaleString()}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
     </div>
   </div>
 
@@ -204,6 +252,22 @@ const userTable = profiles.map(p => {
           body: JSON.stringify({ user_id: userId, tier: newTier }),
         });
         if (!resp.ok) alert('Failed to update tier');
+      } catch { alert('Network error'); }
+    };
+
+    window.toggleBeta = async (userId, enabled) => {
+      try {
+        const resp = await fetch('/api/admin/beta', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: userId, beta_tester: enabled }),
+        });
+        if (resp.ok) {
+          const label = document.querySelector(`input[onchange*="${userId}"]`)?.closest('label')?.querySelector('.beta-label');
+          if (label) label.textContent = enabled ? 'On' : 'Off';
+        } else {
+          alert('Failed to update beta status');
+        }
       } catch { alert('Network error'); }
     };
   </script>

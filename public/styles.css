@@ -1966,6 +1966,39 @@ main {
   border-radius: var(--radius-sm);
 }
 
+.beta-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.beta-label { color: var(--text-muted); }
+
+.activity-action {
+  font-family: monospace;
+  font-size: 0.75rem;
+  background: var(--accent-bg);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.activity-detail {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-time {
+  font-size: 0.75rem;
+  color: var(--text-subtle);
+  white-space: nowrap;
+}
+
 /* Content pages (help, support) */
 .content-page {
   max-width: 700px;
