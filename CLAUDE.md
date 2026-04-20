@@ -116,6 +116,7 @@ playwright.config.ts
 - `STRIPE_PRICE_MONTHLY` / `STRIPE_PRICE_ANNUAL`
 - `PUBLIC_SITE_URL` — `https://recipe-wizard-pro.vercel.app`
 - `UNSPLASH_ACCESS_KEY` — Unsplash API key for food photos (set in Vercel dashboard)
+- `SUPABASE_SERVICE_ROLE_KEY` — set in Vercel (Production only) for admin page; required for admin dashboard, beta tester management, and cross-user queries
 
 ## Not Yet Built (Deferred)
 - Phase 10: local instance admin integration (lower priority now that personal retired)
