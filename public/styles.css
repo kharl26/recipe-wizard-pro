@@ -805,18 +805,22 @@ main {
 
 .modal-body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 0 36px 36px;
+  padding: 16px 36px 36px;
 }
 
 .modal-close {
   position: static;
+  flex-shrink: 0;
+  width: auto;
   background: none;
   border: none;
   font-size: 1.8rem;
   line-height: 1;
   cursor: pointer;
   color: var(--text-muted);
+  padding: 0 4px;
 }
 
 .modal-close:hover { color: var(--text); }
@@ -824,6 +828,8 @@ main {
 /* Kitchen mode toggle — sits next to the close X */
 .kitchen-mode-toggle {
   position: static;
+  flex-shrink: 0;
+  width: auto;
   background: var(--accent-bg);
   color: var(--accent);
   border: 1px solid var(--accent);
@@ -833,6 +839,7 @@ main {
   font-weight: 600;
   cursor: pointer;
   font-family: var(--font);
+  white-space: nowrap;
 }
 
 .kitchen-mode-toggle:hover {
@@ -1054,8 +1061,11 @@ main {
   width: 100vw;
   height: 100vh;
   border-radius: 0;
-  padding: 32px 48px 48px;
+  padding: 0;
   font-size: 1.3rem;
+}
+.recipe-modal.kitchen-mode .modal-body {
+  padding: 16px 48px 48px;
 }
 
 .recipe-modal.kitchen-mode h2 { font-size: 2.2rem; }
