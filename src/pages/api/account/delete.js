@@ -55,8 +55,10 @@ export async function DELETE({ locals }) {
       await supabaseAdmin.from('household_invites').delete().eq('household_id', householdId);
       await supabaseAdmin.from('households').delete().eq('id', householdId);
     }
-    // If not last member, the user's data will be removed but the household survives.
-    // Their preferences (user-scoped) and profile will cascade from auth.users delete below.
+    // If not last member, clean up user-scoped data. Household survives for other members.
+    if (!isLastMember) {
+      await supabaseAdmin.from('conversations').delete().eq('user_id', userId);
+    }
 
     // 4. Delete the auth user — CASCADE via FK constraints removes:
     //    - profiles (id → auth.users)

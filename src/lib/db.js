@@ -370,47 +370,51 @@ export function createDB(supabase, profile) {
     // --- Conversations ---
 
     async getRecentConversations(limit = 20) {
-      if (needsHousehold) return [];
+      if (needsHousehold || !userId) return [];
       const { data } = await supabase
         .from('conversations')
         .select('*')
         .eq('household_id', householdId)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(limit);
       return (data || []).reverse();
     },
 
     async addConversation(role, content) {
-      if (needsHousehold) return;
+      if (needsHousehold || !userId) return;
       await supabase.from('conversations').insert({
         household_id: householdId,
+        user_id: userId,
         role, content,
       });
     },
 
     async clearConversations() {
-      if (needsHousehold) return;
+      if (needsHousehold || !userId) return;
       await supabase
         .from('conversations')
         .delete()
-        .eq('household_id', householdId);
+        .eq('household_id', householdId)
+        .eq('user_id', userId);
     },
 
     async pruneOldConversations(keepCount = 40) {
-      if (needsHousehold) return;
+      if (needsHousehold || !userId) return;
       const { data } = await supabase
         .from('conversations')
         .select('id')
         .eq('household_id', householdId)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(keepCount);
       if (!data || data.length < keepCount) return;
       const keepIds = data.map(r => r.id);
-      // Delete everything NOT in the keep list
       await supabase
         .from('conversations')
         .delete()
         .eq('household_id', householdId)
+        .eq('user_id', userId)
         .not('id', 'in', `(${keepIds.join(',')})`);
     },
 
