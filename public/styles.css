@@ -386,7 +386,7 @@ main {
 
 .recipe-shelf {
   flex-shrink: 0;
-  padding: 2px 0 4px;
+  padding: 0;
 }
 
 .recipe-shelf:empty {
@@ -683,7 +683,7 @@ main {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
-  margin: 16px 0;
+  margin: 8px 0 3px;
 }
 
 .recipe-card {
