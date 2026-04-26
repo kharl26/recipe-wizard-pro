@@ -2643,10 +2643,10 @@ main {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  padding: 6px 0 8px;
+  gap: 6px;
+  padding: 4px 0 6px;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .cooking-for-label {
@@ -2657,29 +2657,11 @@ main {
   letter-spacing: 0.04em;
 }
 
-.cook-for-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.8rem;
-  padding: 3px 10px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  cursor: pointer;
+.cooking-for-list {
+  font-size: 0.85rem;
+  color: var(--text);
   background: var(--elevated);
   transition: all 0.15s;
-}
-
-.cook-for-chip:has(input:checked) {
-  background: var(--accent-bg);
-  border-color: var(--accent);
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.cook-for-chip input {
-  margin: 0;
-  accent-color: var(--accent);
 }
 
 /* Guest members in settings */

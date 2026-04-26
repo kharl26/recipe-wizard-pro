@@ -310,25 +310,14 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
                 hx-on::before-request="showUserMessage(this)"
                 hx-on::after-request="afterChat(this)"
                 hx-indicator="#chat-spinner"
-                x-data={`{ cookingFor: ['everyone'] }`}>
+                >
             <input type="hidden" name="bookmark_mode" :value="mode">
-            <input type="hidden" name="cooking_for" :value={`cookingFor.includes('everyone') ? '' : cookingFor.join(',')`}>
+            <input type="hidden" name="cooking_for" value="">
 
-            {people.length > 1 && (
-              <div class="cooking-for-row">
+            {people.length > 0 && (
+              <div class="cooking-for-row" id="cooking-for-display">
                 <span class="cooking-for-label">Cooking for:</span>
-                <label class="cook-for-chip">
-                  <input type="checkbox" value="everyone" x-model="cookingFor"
-                         @change="if ($event.target.checked) cookingFor = ['everyone']; else if (cookingFor.length === 0) cookingFor = ['everyone'];">
-                  Everyone
-                </label>
-                {people.map(p => (
-                  <label class="cook-for-chip">
-                    <input type="checkbox" value={p.id} x-model="cookingFor"
-                           @change={`if ($event.target.checked) { cookingFor = cookingFor.filter(v => v !== 'everyone'); } if (cookingFor.length === 0) cookingFor = ['everyone'];`}>
-                    {p.name}
-                  </label>
-                ))}
+                <span class="cooking-for-list">{people.map(p => p.name).join(', ')}</span>
               </div>
             )}
 
