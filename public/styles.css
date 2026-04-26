@@ -341,19 +341,28 @@ header {
 }
 
 .pantry-cat-select {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-family: var(--font);
-  padding: 0 2px;
+  padding: 0 1px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text-muted);
-  max-width: 70px;
+  width: 52px;
+  flex-shrink: 0;
   opacity: 0;
   transition: opacity 0.15s;
   cursor: pointer;
   position: relative;
-  z-index: 3;
+  z-index: 1;
+  text-overflow: ellipsis;
+}
+
+.pantry-cat-select:focus,
+.pantry-cat-select:active {
+  z-index: 4;
+  width: auto;
+  max-width: 90px;
 }
 
 .pantry-item:hover .pantry-cat-select { opacity: 1; }
@@ -368,15 +377,20 @@ header {
 .pantry-search-icon {
   font-size: 0.8rem;
   flex-shrink: 0;
+  width: 28px;
+  text-align: center;
 }
 
 .pantry-search {
   flex: 1;
+  min-width: 0;
   font-size: 0.78rem;
   font-family: var(--font);
-  padding: 3px 8px;
+  padding: 4px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
   outline: none;
 }
 
