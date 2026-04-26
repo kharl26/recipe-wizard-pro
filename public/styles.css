@@ -141,7 +141,9 @@ header {
   flex-shrink: 0;
   background: var(--surface-warm);
   padding: 12px;
-  overflow-y: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   position: sticky;
   top: 50px;
   height: calc(100vh - 50px);
@@ -195,17 +197,45 @@ header {
 .pantry-section {
   display: flex;
   flex-direction: column;
-  /* Cap height so the list scrolls instead of pushing the rest of the
-     sidebar off-screen. The exact value is fine-tuned to fit alongside
-     the Household section above it. */
-  max-height: calc(100vh - 200px);
+  flex: 1;
   min-height: 0;
 }
 
-.pantry-list {
+.pantry-list-wrap {
   flex: 1;
-  overflow-y: auto;
   min-height: 0;
+  position: relative;
+}
+
+.pantry-list-wrap::before,
+.pantry-list-wrap::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 18px;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.pantry-list-wrap::before {
+  top: 0;
+  background: linear-gradient(to bottom, var(--surface-warm), transparent);
+}
+
+.pantry-list-wrap::after {
+  bottom: 0;
+  background: linear-gradient(to top, var(--surface-warm), transparent);
+}
+
+.pantry-list-wrap.scroll-top::before { opacity: 1; }
+.pantry-list-wrap.scroll-bottom::after { opacity: 1; }
+
+.pantry-list {
+  height: 100%;
+  overflow-y: auto;
   padding-right: 4px;
 }
 

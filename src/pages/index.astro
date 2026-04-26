@@ -677,12 +677,25 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
           if (!newList) return;
           if (scrollToItem) {
             const target = [...newList.querySelectorAll('.pantry-name')].find(el => el.textContent.trim().toLowerCase() === scrollToItem.toLowerCase());
-            if (target) { target.closest('.pantry-item')?.scrollIntoView({ block: 'nearest' }); return; }
+            if (target) { target.closest('.pantry-item')?.scrollIntoView({ block: 'nearest' }); updatePantryScrollIndicators(newList); return; }
           }
           newList.scrollTop = scrollTop;
+          updatePantryScrollIndicators(newList);
         });
       }
     }
+
+    window.updatePantryScrollIndicators = (list) => {
+      const wrap = list.closest('.pantry-list-wrap');
+      if (!wrap) return;
+      wrap.classList.toggle('scroll-top', list.scrollTop > 8);
+      wrap.classList.toggle('scroll-bottom', list.scrollTop + list.clientHeight < list.scrollHeight - 8);
+    };
+    // Init on load
+    requestAnimationFrame(() => {
+      const list = document.querySelector('.pantry-list');
+      if (list) updatePantryScrollIndicators(list);
+    });
 
     window.searchPantry = (query) => {
       const q = query.toLowerCase().trim();

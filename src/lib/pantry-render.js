@@ -84,7 +84,9 @@ export function renderPantrySection(pantry) {
                oninput="searchPantry(this.value)">
       </div>
       ${filterHtml}
+      <div class="pantry-list-wrap">
       <div class="pantry-list"
+           onscroll="updatePantryScrollIndicators(this)"
            @pantry-filter-change.window="
              const mode = $el.closest('.pantry-section')?.querySelector('.pantry-filter-buttons .active')?.textContent?.trim()?.toLowerCase();
              const checks = [...$el.closest('.pantry-section')?.querySelectorAll('.pantry-cat-check input:checked') || []].map(c => c.value);
@@ -95,5 +97,6 @@ export function renderPantrySection(pantry) {
                else if (mode === 'hide') { item.style.display = checks.includes(cat) ? 'none' : ''; }
              });
            ">${itemsHtml}</div>
+      </div>
     </div>`;
 }
