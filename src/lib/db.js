@@ -22,7 +22,6 @@ export function normalizePantryItem(name) {
     .replace(/^\s*(oz|g|lb|lbs|cups?|tbsp|tsp|ml|kg|quarts?|pints?|gallons?|liters?)\b\.?\s*/i, '')
     .replace(/^\s*(cans?|bottles?|packages?|bags?|bunche?s?|heads?|stalks?|cloves?|slices?|pieces?|medium|large|small|whole)\b\s*/i, '')
     .replace(/^\s*of\s+/i, '')
-    .replace(/,.*$/, '')
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
@@ -369,7 +368,9 @@ export function createDB(supabase, profile) {
 
     async renamePantryItem(id, newName) {
       const normalized = normalizePantryItem(newName);
-      if (!normalized) return;
+      if (!normalized || needsHousehold) return;
+      const existing = await this.getPantryItemByName(normalized);
+      if (existing && existing.id !== id) return;
       await supabase.from('pantry').update({
         item: normalized,
         modified_at: new Date().toISOString(),
