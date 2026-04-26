@@ -672,6 +672,25 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
       if (el) setTimeout(() => el.scrollTop = el.scrollHeight, 100);
     };
 
+    function swapPantrySection(html, scrollToItem) {
+      const list = document.querySelector('.pantry-list');
+      const scrollTop = list ? list.scrollTop : 0;
+      const section = document.getElementById('pantry-section');
+      if (section) {
+        section.outerHTML = html;
+        if (window.htmx) htmx.process(document.getElementById('pantry-section'));
+        requestAnimationFrame(() => {
+          const newList = document.querySelector('.pantry-list');
+          if (!newList) return;
+          if (scrollToItem) {
+            const target = [...newList.querySelectorAll('.pantry-name')].find(el => el.textContent.trim().toLowerCase() === scrollToItem.toLowerCase());
+            if (target) { target.closest('.pantry-item')?.scrollIntoView({ block: 'nearest' }); return; }
+          }
+          newList.scrollTop = scrollTop;
+        });
+      }
+    }
+
     window.editPantryItem = (el, encodedItem) => {
       const current = el.textContent.trim();
       const input = document.createElement('input');
@@ -684,9 +703,7 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
         if (newName && newName !== current) {
           const resp = await fetch(`/api/pantry?item=${encodedItem}&rename=${encodeURIComponent(newName)}`, { method: 'PATCH' });
           if (resp.ok) {
-            const html = await resp.text();
-            const section = document.getElementById('pantry-section');
-            if (section) { section.outerHTML = html; if (window.htmx) htmx.process(document.getElementById('pantry-section')); }
+            swapPantrySection(await resp.text(), newName);
             return;
           }
         }
@@ -703,11 +720,10 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
     };
 
     window.changePantryCategory = async (encodedItem, category) => {
+      const itemName = decodeURIComponent(encodedItem);
       const resp = await fetch(`/api/pantry?item=${encodedItem}&category=${encodeURIComponent(category)}`, { method: 'PATCH' });
       if (resp.ok) {
-        const html = await resp.text();
-        const section = document.getElementById('pantry-section');
-        if (section) { section.outerHTML = html; if (window.htmx) htmx.process(document.getElementById('pantry-section')); }
+        swapPantrySection(await resp.text(), itemName);
       }
     };
 
