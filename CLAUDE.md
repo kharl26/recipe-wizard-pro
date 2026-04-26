@@ -1,13 +1,13 @@
 # Recipe Wizard Pro — Multi-User Paid Recipe App
 
 ## What is this?
-Live at **https://recipe-wizard-pro.vercel.app** — the active production app Bob and Alice use for daily cooking. Multi-user version of Recipe Wizard with authentication, household management, and subscription billing. Week 7 bootcamp project.
+Live at **https://recipewizard.aachenor.com** — the active production app Bob and Alice use for daily cooking. Multi-user version of Recipe Wizard with authentication, household management, and subscription billing. Week 7 bootcamp project.
 
 The personal single-user Recipe Wizard (Week 5) has been retired and archived at `~/Documents/4TBSSD/recipe-wizard-old/` — do not modify it. All development happens here.
 
 ## Status (2026-04-15)
 - **Deployed**: Vercel free tier, auto-deploys on git push to main
-- **Domain**: recipe-wizard-pro.vercel.app (custom domain recipewizard.aachenor.com still pending)
+- **Domain**: recipewizard.aachenor.com (custom domain recipewizard.aachenor.com still pending)
 - **Stripe**: sandbox/test mode (flip to live when ready for real charges)
 - **Users**: Bob (admin) + Alice (friend); household `97cf39fb-fe90-4bcf-ab50-ce75d8b87c17`
 - **Tests**: 28 Playwright tests, all passing
@@ -114,7 +114,7 @@ playwright.config.ts
 - `STRIPE_SECRET_KEY`
 - `PUBLIC_STRIPE_PUBLISHABLE_KEY`
 - `STRIPE_PRICE_MONTHLY` / `STRIPE_PRICE_ANNUAL`
-- `PUBLIC_SITE_URL` — `https://recipe-wizard-pro.vercel.app`
+- `PUBLIC_SITE_URL` — `https://recipewizard.aachenor.com`
 - `UNSPLASH_ACCESS_KEY` — Unsplash API key for food photos (set in Vercel dashboard)
 - `SUPABASE_SERVICE_ROLE_KEY` — set in Vercel (Production only) for admin page; required for admin dashboard, beta tester management, and cross-user queries
 
