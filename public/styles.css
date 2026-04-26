@@ -361,8 +361,10 @@ header {
 }
 
 .pantry-search-icon {
-  font-size: 0.8rem;
   flex-shrink: 0;
+  font-size: 1rem;
+  padding: 0 10px;
+  color: var(--text-muted);
 }
 
 .pantry-search {
