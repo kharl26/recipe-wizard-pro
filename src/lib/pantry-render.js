@@ -16,8 +16,7 @@ const CONFIDENCE_NEXT = { certain: 'likely', likely: 'maybe', maybe: 'certain' }
 
 const CATEGORIES = [
   'protein', 'produce', 'dairy', 'grains', 'spices',
-  'condiments', 'baking', 'canned', 'frozen', 'beverages',
-  'spirits', 'other'
+  'condiments', 'oils', 'baking', 'beverages', 'spirits', 'other'
 ];
 
 export function renderPantrySection(pantry) {
@@ -47,9 +46,9 @@ export function renderPantrySection(pantry) {
         return `
         <div class="sidebar-item pantry-item" data-category="${escapeHtml(cat)}">
           <span class="pantry-name confidence-${escapeHtml(conf)}"
-                title="Click to edit"
+                title="Click to edit name. Enter to save, Escape to cancel."
                 onclick="editPantryItem(this, '${encodedItem}')">${escapedItem}</span>
-          <select class="pantry-cat-select" title="Category"
+          <select class="pantry-cat-select" title="Set category (hover to see)"
                   onchange="changePantryCategory('${encodedItem}', this.value)"
                   ><option value="">--</option>${CATEGORIES.map(c =>
                     `<option value="${c}"${c === item.category ? ' selected' : ''}>${c}</option>`
@@ -58,13 +57,13 @@ export function renderPantrySection(pantry) {
                 hx-patch="/api/pantry?item=${encodedItem}&confidence=${encodeURIComponent(nextConf)}"
                 hx-target="#pantry-section"
                 hx-swap="outerHTML"
-                title="Click to change (${conf} → ${nextConf})">${label}</span>
+                title="Confidence: ${conf}. Click to cycle → ${nextConf}.">${label}</span>
           <button type="button" class="pantry-remove"
                   hx-delete="/api/pantry?item=${encodedItem}"
                   hx-target="#pantry-section"
                   hx-swap="outerHTML"
                   hx-confirm="Remove ${escapedItem} from pantry?"
-                  title="Remove from pantry">&times;</button>
+                  title="Remove this item from pantry">&times;</button>
         </div>`;
       }).join('');
 
@@ -77,7 +76,7 @@ export function renderPantrySection(pantry) {
             hx-swap="outerHTML"
             hx-on::after-request="this.reset()">
         <input type="text" name="item" placeholder="Add item..." autocomplete="off" required>
-        <button type="submit" title="Add to pantry">+</button>
+        <button type="submit" title="Add item to pantry">+</button>
       </form>
       ${filterHtml}
       <div class="pantry-list"
