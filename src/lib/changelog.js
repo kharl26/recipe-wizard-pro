@@ -5,11 +5,16 @@
 export const changelog = [
   {
     date: '2026-04-26',
-    title: 'Pantry upgrades',
+    title: 'Pantry and cooking-for upgrades',
     items: [
       'Click any pantry item name to edit it inline',
       'Category selector on each item (hover to see): protein, produce, dairy, grains, spices, condiments, oils, baking, beverages, spirits, other',
       'Filter bar above pantry list — show or hide items by category',
+      'Search your pantry — type to filter items instantly',
+      'Pantry sidebar fills the full screen height; scroll indicators show when more items are above or below',
+      'Smarter ingredient names when adding from recipes — no more quantities or "optional:" prefixes',
+      'Cooking-for display is now managed by the Wizard during conversation — just say who\'s eating and it updates automatically',
+      'What\'s New popup (this!) shows new features since your last visit',
     ],
   },
   {
