@@ -223,13 +223,13 @@ header {
 .pantry-list-wrap::before {
   top: 0;
   background: linear-gradient(to bottom, var(--surface-warm) 0%, transparent 100%);
-  border-top: 1.5px solid rgba(0,0,0,0.15);
+  border-top: 3px solid rgba(0,0,0,0.15);
 }
 
 .pantry-list-wrap::after {
   bottom: 0;
   background: linear-gradient(to top, var(--surface-warm) 0%, transparent 100%);
-  border-bottom: 1.5px solid rgba(0,0,0,0.15);
+  border-bottom: 3px solid rgba(0,0,0,0.15);
 }
 
 .pantry-list-wrap.scroll-top::before { opacity: 1; }
@@ -385,7 +385,6 @@ header {
 .pantry-filters {
   margin-bottom: 6px;
   padding: 4px 0;
-  border-bottom: 1px solid var(--border);
 }
 
 .pantry-filter-buttons {
