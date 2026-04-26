@@ -228,7 +228,9 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
               const ch = document.getElementById('chat-history');
               const distFromBottom = ch ? ch.scrollHeight - ch.scrollTop - ch.clientHeight : 0;
               showShelf = !showShelf;
-              $nextTick(() => { if (ch) ch.scrollTop = ch.scrollHeight - ch.clientHeight - distFromBottom; });
+              requestAnimationFrame(() => requestAnimationFrame(() => {
+                if (ch) ch.scrollTop = ch.scrollHeight - ch.clientHeight - distFromBottom;
+              }));
             " x-text="showShelf ? 'Hide recipes' : 'Show recipes'"></button>
             <div id="recipe-shelf" class="recipe-shelf" x-show="showShelf"></div>
           </div>
