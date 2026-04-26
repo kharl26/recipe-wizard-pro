@@ -398,6 +398,12 @@ main {
   gap: 10px !important;
   margin-top: 0 !important;
   margin-bottom: 0 !important;
+  animation: shelfFadeIn 0.4s ease;
+}
+
+@keyframes shelfFadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .shelf-grid .recipe-card {
