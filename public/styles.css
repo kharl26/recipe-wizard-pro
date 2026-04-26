@@ -396,6 +396,8 @@ main {
 .shelf-grid {
   grid-template-columns: repeat(4, 1fr) !important;
   gap: 10px !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
 }
 
 .shelf-grid .recipe-card {
