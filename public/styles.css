@@ -257,13 +257,9 @@ header {
 }
 
 /* Clickable confidence badge — small pill that cycles certain→likely→maybe.
-   Hidden by default; overlays the right side of the row on hover so the
-   item name fills the full width when not hovered. */
+   In the flex row next to the category select. Hidden until hover. */
 .pantry-confidence {
-  position: absolute;
-  right: 22px; /* leave room for the X remove button */
-  top: 50%;
-  transform: translateY(-50%);
+  flex-shrink: 0;
   font-size: 0.62rem;
   padding: 1px 6px;
   border-radius: 999px;
@@ -271,11 +267,10 @@ header {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-weight: 600;
-  transition: all 0.15s;
+  transition: opacity 0.15s;
   opacity: 0;
   pointer-events: none;
   border: 1px solid transparent;
-  z-index: 2;
 }
 
 .pantry-item:hover .pantry-confidence {
@@ -353,16 +348,7 @@ header {
   opacity: 0;
   transition: opacity 0.15s;
   cursor: pointer;
-  position: relative;
-  z-index: 1;
   text-overflow: ellipsis;
-}
-
-.pantry-cat-select:focus,
-.pantry-cat-select:active {
-  z-index: 4;
-  width: auto;
-  max-width: 90px;
 }
 
 .pantry-item:hover .pantry-cat-select { opacity: 1; }
