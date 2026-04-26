@@ -224,7 +224,12 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
         <!-- Chat tab -->
         <div x-show="tab === 'chat'" class="chat-layout">
           <div id="recipe-shelf-wrap" class="recipe-shelf-wrap" x-data="{ showShelf: true }">
-            <button class="shelf-toggle" @click="showShelf = !showShelf" x-text="showShelf ? 'Hide recipes' : 'Show recipes'"></button>
+            <button class="shelf-toggle" @click="
+              const ch = document.getElementById('chat-history');
+              const distFromBottom = ch ? ch.scrollHeight - ch.scrollTop - ch.clientHeight : 0;
+              showShelf = !showShelf;
+              $nextTick(() => { if (ch) ch.scrollTop = ch.scrollHeight - ch.clientHeight - distFromBottom; });
+            " x-text="showShelf ? 'Hide recipes' : 'Show recipes'"></button>
             <div id="recipe-shelf" class="recipe-shelf" x-show="showShelf"></div>
           </div>
           <div id="chat-history" class="chat-history">
