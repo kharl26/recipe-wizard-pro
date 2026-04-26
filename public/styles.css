@@ -362,14 +362,12 @@ header {
 
 .pantry-search-icon {
   flex-shrink: 0;
-  font-size: 1rem;
-  padding: 0 10px;
+  font-size: 0.8rem;
   color: var(--text-muted);
 }
 
 .pantry-search {
-  flex: 1;
-  min-width: 0;
+  width: 85%;
   font-size: 0.78rem;
   font-family: var(--font);
   padding: 4px 8px;
@@ -433,8 +431,7 @@ header {
 }
 
 .pantry-add-form input {
-  flex: 1;
-  min-width: 0;
+  width: 85%;
   font-family: var(--font);
   font-size: 0.78rem;
   padding: 4px 8px;
