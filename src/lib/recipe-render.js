@@ -24,11 +24,16 @@ export function escapeHtml(str) {
 // "2 tbsp soy sauce" → "soy sauce"; "14.5 oz (411g) can diced tomatoes" → "diced tomatoes"
 export function extractItemName(line) {
   return line
-    .replace(/^[\d./\s]+/, '')                                                                  // leading numbers
+    .replace(/^optional:\s*/i, '')                                                              // "optional:"
+    .replace(/^[\d.\/\-\s]+/, '')                                                               // leading numbers, fractions, ranges
     .replace(/^\s*(oz|g|lb|lbs|cups?|tbsp|tsp|ml|kg|quarts?|pints?|gallons?|liters?)\b\.?\s*/i, '') // units
     .replace(/^\s*\([^)]*\)\s*/, '')                                                            // parenthetical (411g)
-    .replace(/^\s*(cans?|bottles?|packages?|bags?|bunche?s?|heads?|stalks?|cloves?|slices?|pieces?|medium|large|small|whole)\b\s*/i, '') // containers/sizes
+    .replace(/^\s*(cans?|bottles?|packages?|bags?|bunch(?:es)?|heads?|stalks?|cloves?|slices?|pieces?|pinch(?:es)?|dash(?:es)?|sprigs?|medium|large|small|whole|fresh|dried)\b\s*/i, '') // containers/sizes/descriptors
     .replace(/^\s*of\s+/i, '')                                                                  // "of"
+    .replace(/\s*,?\s*to taste\s*$/i, '')                                                       // trailing "to taste"
+    .replace(/\s*,?\s*optional\s*$/i, '')                                                       // trailing "optional"
+    .replace(/\s*,?\s*divided\s*$/i, '')                                                        // trailing "divided"
+    .replace(/\s*,?\s*plus more.*$/i, '')                                                       // trailing "plus more..."
     .trim();
 }
 
