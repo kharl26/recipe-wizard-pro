@@ -376,7 +376,7 @@ main {
   font-weight: 600;
   cursor: pointer;
   font-family: var(--font);
-  margin-bottom: 6px;
+  margin-bottom: 2px;
 }
 
 .shelf-toggle:hover {
@@ -386,7 +386,7 @@ main {
 
 .recipe-shelf {
   flex-shrink: 0;
-  padding: 8px 0;
+  padding: 2px 0 4px;
 }
 
 .recipe-shelf:empty {
