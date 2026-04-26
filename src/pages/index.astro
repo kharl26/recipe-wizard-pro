@@ -4,6 +4,7 @@ import { stripCodeBlocks } from '../lib/ai.js';
 import { renderRecipeModalBody, renderChatMarkdown } from '../lib/recipe-render.js';
 import { renderPantrySection } from '../lib/pantry-render.js';
 import { supabaseAdmin } from '../lib/supabase.js';
+import { getNewEntries } from '../lib/changelog.js';
 
 const { locals } = Astro;
 const user = locals.user;
@@ -34,6 +35,8 @@ if (isLoggedIn && profile) {
   const gate = await db.canGenerate();
   householdUnlimited = gate.allowed && gate.limit === null;
 }
+
+const changelogEntries = isLoggedIn ? getNewEntries(profile?.changelog_seen) : [];
 
 const isPro = tier === 'subscriber' || tier === 'friend' || tier === 'admin' || householdUnlimited;
 const isAdmin = tier === 'admin';
@@ -115,6 +118,25 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
 </head>
 <body x-data="{ tab: 'chat', sidebarOpen: false, mode: 'include', showSignIn: false, userMenuOpen: false }" data-current-user={displayName ? displayName.toLowerCase() : 'everyone'}>
   <script id="rw-cook-config" type="application/json" set:html={JSON.stringify(cookBucketMap)}></script>
+
+  {changelogEntries.length > 0 && (
+    <div class="changelog-overlay" x-data="{ show: true }" x-show="show" x-cloak @click.self="show = false">
+      <div class="changelog-popup">
+        <button class="changelog-close" @click="show = false; fetch('/api/changelog-seen', { method: 'POST' })">&times;</button>
+        <h2>What's New</h2>
+        {changelogEntries.map(entry => (
+          <div class="changelog-entry">
+            <div class="changelog-date">{entry.date}</div>
+            <div class="changelog-title">{entry.title}</div>
+            <ul>
+              {entry.items.map(item => <li>{item}</li>)}
+            </ul>
+          </div>
+        ))}
+        <button class="changelog-dismiss" @click="show = false; fetch('/api/changelog-seen', { method: 'POST' })">Got it</button>
+      </div>
+    </div>
+  )}
 
   <!-- Sign-in modal overlay -->
   <div class="signin-overlay" x-show="showSignIn" x-cloak @click.self="showSignIn = false">
