@@ -731,7 +731,8 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
     };
 
     window.toggleKitchenMode = (btn) => {
-      const modal = btn.closest('.recipe-modal') || document.querySelector('.recipe-modal-overlay[style*="display"] .recipe-modal, .recipe-modal-overlay:not([style*="none"]) .recipe-modal');
+      const bar = document.getElementById('modal-floating-toolbar');
+      const modal = btn.closest('.recipe-modal') || bar?._modal || document.querySelector('.recipe-modal-overlay:not([style*="none"]) .recipe-modal');
       if (!modal) return;
       const on = modal.classList.toggle('kitchen-mode');
       btn.innerHTML = on ? '&#9587; Exit kitchen mode' : '&#127859; Kitchen mode';
