@@ -297,6 +297,76 @@ header {
   color: #dc2626;
 }
 
+.pantry-edit-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.82rem;
+  font-family: var(--font);
+  padding: 1px 4px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+
+.pantry-cat-select {
+  font-size: 0.65rem;
+  font-family: var(--font);
+  padding: 0 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  max-width: 70px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  cursor: pointer;
+}
+
+.pantry-item:hover .pantry-cat-select { opacity: 1; }
+
+.pantry-filters {
+  margin-bottom: 6px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.pantry-filter-buttons {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.pantry-filter-btn {
+  font-size: 0.68rem;
+  font-family: var(--font);
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.pantry-filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+.pantry-filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+.pantry-filter-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+}
+
+.pantry-cat-check {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.pantry-cat-check input { margin: 0; width: 12px; height: 12px; }
+
 .pantry-add-form {
   display: flex;
   gap: 4px;

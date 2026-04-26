@@ -650,6 +650,45 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
       if (el) setTimeout(() => el.scrollTop = el.scrollHeight, 100);
     };
 
+    window.editPantryItem = (el, encodedItem) => {
+      const current = el.textContent.trim();
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = current;
+      input.className = 'pantry-edit-input';
+      input.maxLength = 60;
+      const save = async () => {
+        const newName = input.value.trim();
+        if (newName && newName !== current) {
+          const resp = await fetch(`/api/pantry?item=${encodedItem}&rename=${encodeURIComponent(newName)}`, { method: 'PATCH' });
+          if (resp.ok) {
+            const html = await resp.text();
+            const section = document.getElementById('pantry-section');
+            if (section) { section.outerHTML = html; if (window.htmx) htmx.process(document.getElementById('pantry-section')); }
+            return;
+          }
+        }
+        el.textContent = current;
+        el.style.display = '';
+        input.remove();
+      };
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } if (e.key === 'Escape') { el.style.display = ''; input.remove(); } });
+      input.addEventListener('blur', save);
+      el.style.display = 'none';
+      el.parentNode.insertBefore(input, el);
+      input.focus();
+      input.select();
+    };
+
+    window.changePantryCategory = async (encodedItem, category) => {
+      const resp = await fetch(`/api/pantry?item=${encodedItem}&category=${encodeURIComponent(category)}`, { method: 'PATCH' });
+      if (resp.ok) {
+        const html = await resp.text();
+        const section = document.getElementById('pantry-section');
+        if (section) { section.outerHTML = html; if (window.htmx) htmx.process(document.getElementById('pantry-section')); }
+      }
+    };
+
     window.toggleKitchenMode = (btn) => {
       const modal = btn.closest('.recipe-modal');
       if (!modal) return;

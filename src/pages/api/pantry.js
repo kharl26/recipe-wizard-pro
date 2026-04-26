@@ -30,12 +30,27 @@ export async function PATCH({ url, locals }) {
   try {
     const item = url.searchParams.get('item')?.trim();
     const confidence = url.searchParams.get('confidence')?.trim();
-    if (!item || !confidence) return new Response('Missing item or confidence', { status: 400 });
-    const valid = ['certain', 'likely', 'maybe'];
-    if (!valid.includes(confidence)) return new Response('Invalid confidence', { status: 400 });
-    await db.logActivity('pantry_update', { item, confidence });
-    const row = await db.getPantryItemByName(item);
-    if (row) await db.updatePantryConfidence(row.id, confidence);
+    const rename = url.searchParams.get('rename')?.trim();
+    const category = url.searchParams.get('category');
+    const row = item ? await db.getPantryItemByName(item) : null;
+
+    if (confidence) {
+      const valid = ['certain', 'likely', 'maybe'];
+      if (!item || !valid.includes(confidence)) return new Response('Invalid', { status: 400 });
+      await db.logActivity('pantry_update', { item, confidence });
+      if (row) await db.updatePantryConfidence(row.id, confidence);
+    } else if (rename) {
+      if (!item || !row) return new Response('Item not found', { status: 404 });
+      await db.logActivity('pantry_rename', { from: item, to: rename });
+      await db.renamePantryItem(row.id, rename);
+    } else if (category !== null && category !== undefined) {
+      if (!item || !row) return new Response('Item not found', { status: 404 });
+      await db.logActivity('pantry_category', { item, category });
+      await db.updatePantryCategory(row.id, category);
+    } else {
+      return new Response('Missing action', { status: 400 });
+    }
+
     return htmlResponse(db);
   } catch (err) {
     console.error('Pantry update error:', err);

@@ -367,6 +367,22 @@ export function createDB(supabase, profile) {
       }).eq('id', id);
     },
 
+    async renamePantryItem(id, newName) {
+      const normalized = normalizePantryItem(newName);
+      if (!normalized) return;
+      await supabase.from('pantry').update({
+        item: normalized,
+        modified_at: new Date().toISOString(),
+      }).eq('id', id);
+    },
+
+    async updatePantryCategory(id, category) {
+      await supabase.from('pantry').update({
+        category: category || null,
+        modified_at: new Date().toISOString(),
+      }).eq('id', id);
+    },
+
     // --- Conversations ---
 
     async getRecentConversations(limit = 20) {
