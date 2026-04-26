@@ -357,6 +357,33 @@ main {
 }
 
 /* Recipe shelf — compact row of cards above chat */
+.recipe-shelf-wrap {
+  flex-shrink: 0;
+}
+
+.recipe-shelf-wrap:not(:has(.recipe-card)) .shelf-toggle {
+  display: none;
+}
+
+.shelf-toggle {
+  display: inline-block;
+  background: var(--accent-bg);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font);
+  margin-bottom: 6px;
+}
+
+.shelf-toggle:hover {
+  background: var(--accent);
+  color: white;
+}
+
 .recipe-shelf {
   flex-shrink: 0;
   padding: 8px 0;
