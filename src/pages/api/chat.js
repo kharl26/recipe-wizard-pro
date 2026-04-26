@@ -111,6 +111,20 @@ export async function POST({ request, locals }) {
       html += `<div class="update-notice pref-notice">Preferences updated: ${escapeHtml(items)}</div>`;
     }
 
+    // Update cooking-for display via OOB swap
+    if (result.cookingForUpdate) {
+      const cfu = result.cookingForUpdate;
+      const members = (cfu.members || []).map(m => escapeHtml(m));
+      const guests = cfu.guests || 0;
+      let listText = members.join(', ');
+      if (guests > 0) listText += ` + ${guests} guest${guests === 1 ? '' : 's'}`;
+      if (cfu.notes) listText += ` (${escapeHtml(cfu.notes)})`;
+      html += `<div id="cooking-for-display" hx-swap-oob="innerHTML" class="cooking-for-row">
+        <span class="cooking-for-label">Cooking for:</span>
+        <span class="cooking-for-list">${listText}</span>
+      </div>`;
+    }
+
     // Update usage counter via OOB swap
     const newGate = await db.canGenerate();
     if (newGate.limit) {

@@ -183,6 +183,20 @@ If a user asks a question that suggests their experience level should be adjuste
 [{"person":"Bob","experience":"beginner","reason":"asked for definition of sauté"}]
 \`\`\`
 
+### Cooking-For Updates
+The "Cooking for" display shows who the meal is being prepared for. It defaults to all household members. When the user mentions changes — someone won't be home, guests are coming, cooking for just themselves — emit a cooking_for_update block to update the display and adjust servings:
+\`\`\`cooking_for_update
+{"members": ["Bob", "Alice"], "guests": 0, "notes": ""}
+\`\`\`
+
+Rules:
+- "members" lists household member NAMES who will be eating (remove anyone the user says won't be there)
+- "guests" is a count of non-household people joining (e.g., "3 friends coming over" → guests: 3)
+- "notes" is optional — any dietary needs mentioned for guests (e.g., "one is vegetarian")
+- Total servings = members.length + guests
+- Only emit this block when the cooking-for situation CHANGES from what it currently is. Do not emit it on every message.
+- When guests are added, ask if there are any dietary restrictions or allergies to be aware of for the guests.
+
 ### Conversation Style
 - Write in plain text. Do NOT use markdown formatting — no **, ##, ###, ---, bullet lists, or numbered lists. Use short paragraphs separated by blank lines for readability. Bold and italic are not rendered in the chat display, so they show as ugly symbols. Just write naturally.
 - Be warm, practical, and concise
@@ -191,7 +205,7 @@ If a user asks a question that suggests their experience level should be adjuste
 - **ALLERGIES (category: allergy) are NEVER to be suggested, period. Also warn about cross-contamination** — e.g., if someone is allergic to peanuts, warn about recipes that use other tree nuts or are typically made in peanut-containing kitchens.
 - **do_not_use items are preferences, not safety issues** — NEVER suggest these, but no cross-contamination warnings needed.
 - For "use_sparingly" items, include them no more than once per set of 4 recipes
-- Adjust servings when told (guests coming, cooking for one, etc.)
+- Servings are determined by the current cooking-for state (household members + guests). Adjust automatically when cooking_for_update changes the count.
 - When giving feedback-based adjustments, be specific ("I'll increase the spice in similar sauces next time")
 - When the user provides feedback on a recipe ("the sauce was bland", "that was great"), extract preference updates and acknowledge the feedback
 ${bookmarkMode === 'include' ? await buildBookmarkContext(db) : ''}
@@ -297,6 +311,12 @@ function parseExperienceUpdates(text) {
   try { return JSON.parse(match[1]); } catch { return []; }
 }
 
+function parseCookingForUpdate(text) {
+  const match = text.match(/```cooking_for_update\s*([\s\S]*?)```/);
+  if (!match) return null;
+  try { return JSON.parse(match[1]); } catch { return null; }
+}
+
 export function stripCodeBlocks(text) {
   return text
     .replace(/```json\s*[\s\S]*?```/g, '')
@@ -304,7 +324,8 @@ export function stripCodeBlocks(text) {
     .replace(/```preference_update\s*[\s\S]*?```/g, '')
     .replace(/```onboarding_complete\s*[\s\S]*?```/g, '')
     .replace(/```experience_update\s*[\s\S]*?```/g, '')
-    .replace(/```(?:json|pantry_update|preference_update|onboarding_complete|experience_update)[\s\S]*$/, '')
+    .replace(/```cooking_for_update\s*[\s\S]*?```/g, '')
+    .replace(/```(?:json|pantry_update|preference_update|onboarding_complete|experience_update|cooking_for_update)[\s\S]*$/, '')
     .trim();
 }
 
@@ -342,6 +363,7 @@ export async function chat(db, userMessage, bookmarkMode = 'include', cookingFor
   const preferenceUpdates = parsePreferenceUpdates(assistantText);
   const onboardingComplete = parseOnboardingComplete(assistantText);
   const experienceUpdates = parseExperienceUpdates(assistantText);
+  const cookingForUpdate = parseCookingForUpdate(assistantText);
 
   // Apply pantry updates
   for (const u of pantryUpdates) {
@@ -415,6 +437,7 @@ export async function chat(db, userMessage, bookmarkMode = 'include', cookingFor
     preferenceUpdates,
     experienceUpdates,
     onboardingComplete,
+    cookingForUpdate,
     raw: assistantText,
   };
 }

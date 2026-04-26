@@ -41,7 +41,13 @@ const user = locals.user;
 
     <section>
       <h2>Cooking for</h2>
-      <p>If your household has more than one person, the "Cooking for" selector appears above the chat input. Select specific people to cook for — the Wizard will tailor servings, respect only their allergies and preferences, and adjust accordingly. "Everyone" is the default.</p>
+      <p>The "Cooking for" line above the chat input shows who the meal is being prepared for. It defaults to all household members. The Wizard updates it automatically during conversation:</p>
+      <ul>
+        <li>"Bob won't be home tonight" — Bob is removed, servings adjust</li>
+        <li>"We're having 3 friends over" — guest count is added, Wizard asks about dietary needs</li>
+        <li>"Just cooking for myself" — only the current user, servings = 1</li>
+      </ul>
+      <p>All household members' allergies and preferences are respected. Guest dietary needs are handled conversationally. Servings = household members eating + guests.</p>
     </section>
 
     <section>
