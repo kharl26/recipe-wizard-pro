@@ -119,8 +119,7 @@ export function renderRecipeModalBody(recipe, pantryItems = []) {
   }
 
   return `
-    <button class="modal-close" @click="showModal = false" title="Close">&times;</button>
-    <button type="button" class="kitchen-mode-toggle" onclick="toggleKitchenMode(this)" title="Kitchen mode">&#127859; Kitchen mode</button>
+    <div class="modal-toolbar-placeholder"></div>
     <div class="recipe-modal-image">
       <span class="placeholder-cuisine">${escapeHtml(r.cuisine || 'Recipe')}</span>
       <span class="placeholder-difficulty ${difficultyClass}">${escapeHtml(r.difficulty || 'Easy')}</span>

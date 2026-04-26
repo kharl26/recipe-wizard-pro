@@ -731,11 +731,69 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
     };
 
     window.toggleKitchenMode = (btn) => {
-      const modal = btn.closest('.recipe-modal');
+      const modal = btn.closest('.recipe-modal') || document.querySelector('.recipe-modal-overlay[style*="display"] .recipe-modal, .recipe-modal-overlay:not([style*="none"]) .recipe-modal');
       if (!modal) return;
       const on = modal.classList.toggle('kitchen-mode');
       btn.innerHTML = on ? '&#9587; Exit kitchen mode' : '&#127859; Kitchen mode';
+      updateModalToolbarPosition();
     };
+
+    // Floating toolbar for recipe modals — stays visible while scrolling
+    function createModalToolbar(modal, overlay) {
+      removeModalToolbar();
+      const bar = document.createElement('div');
+      bar.className = 'modal-floating-toolbar';
+      bar.id = 'modal-floating-toolbar';
+      bar.innerHTML = `
+        <button type="button" class="kitchen-mode-toggle" onclick="toggleKitchenMode(this)" title="Kitchen mode">&#127859; Kitchen mode</button>
+        <button class="modal-close" onclick="closeCurrentModal()" title="Close">&times;</button>
+      `;
+      document.body.appendChild(bar);
+      bar._modal = modal;
+      bar._overlay = overlay;
+      updateModalToolbarPosition();
+    }
+
+    function removeModalToolbar() {
+      const bar = document.getElementById('modal-floating-toolbar');
+      if (bar) bar.remove();
+    }
+
+    function updateModalToolbarPosition() {
+      const bar = document.getElementById('modal-floating-toolbar');
+      if (!bar || !bar._modal) return;
+      const rect = bar._modal.getBoundingClientRect();
+      bar.style.top = Math.max(0, rect.top) + 'px';
+      bar.style.right = (window.innerWidth - rect.right) + 'px';
+      bar.style.left = '';
+    }
+
+    window.closeCurrentModal = () => {
+      const bar = document.getElementById('modal-floating-toolbar');
+      if (bar && bar._overlay) {
+        const alpineData = Alpine.$data(bar._overlay);
+        if (alpineData) alpineData.showModal = false;
+      }
+      removeModalToolbar();
+    };
+
+    // Watch for modals opening/closing
+    const modalObserver = new MutationObserver(() => {
+      const visibleOverlay = document.querySelector('.recipe-modal-overlay:not([style*="none"])');
+      const bar = document.getElementById('modal-floating-toolbar');
+      if (visibleOverlay && !bar) {
+        const modal = visibleOverlay.querySelector('.recipe-modal');
+        if (modal) {
+          requestAnimationFrame(() => createModalToolbar(modal, visibleOverlay));
+        }
+      } else if (!visibleOverlay && bar) {
+        removeModalToolbar();
+      }
+    });
+    modalObserver.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['style'] });
+
+    // Keep toolbar positioned on window resize
+    window.addEventListener('resize', updateModalToolbarPosition);
 
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
