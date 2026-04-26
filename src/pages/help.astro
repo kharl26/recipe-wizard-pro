@@ -35,7 +35,13 @@ const user = locals.user;
         <li><strong>Chat + Saved</strong> — Wizard may re-suggest your saved favorites alongside new ideas</li>
         <li><strong>Chat only</strong> — only brand new recipes</li>
         <li><strong>Saved only</strong> — search your saved collection without using a generation</li>
+        <li><strong>Show/Hide recipes</strong> — the toggle button above the recipe cards collapses or expands them to free up space for the chat</li>
       </ul>
+    </section>
+
+    <section>
+      <h2>Cooking for</h2>
+      <p>If your household has more than one person, the "Cooking for" selector appears above the chat input. Select specific people to cook for — the Wizard will tailor servings, respect only their allergies and preferences, and adjust accordingly. "Everyone" is the default.</p>
     </section>
 
     <section>
@@ -45,22 +51,55 @@ const user = locals.user;
         <li><strong>Kitchen mode</strong> — click the "Kitchen mode" button for a full-screen, large-font view designed for cooking with the laptop on the counter</li>
         <li><strong>Viewing as</strong> — switch between household members to see instructions at the right experience level (beginners get term definitions and safety notes; experienced cooks get concise steps)</li>
         <li><strong>Column resizer</strong> — drag the divider between ingredients and instructions to adjust the split</li>
+        <li><strong>Nutrition</strong> — each recipe includes estimated nutrition per serving (calories, protein, carbs, fat, fiber, sodium) based on USDA reference data</li>
+        <li><strong>Wine pairing</strong> — if enabled in your profile, each recipe includes a wine suggestion</li>
       </ul>
     </section>
 
     <section>
-      <h2>Saving recipes</h2>
-      <p>Click the star on any recipe card to save it. Saved recipes are always accessible — even on the free tier, you'll never lose access to recipes you've saved. A filled star means the recipe is already in your collection.</p>
+      <h2>Ingredients and shopping</h2>
+      <p>Each ingredient in the recipe shows a pantry icon:</p>
+      <ul>
+        <li>&#9989; = you have this in your pantry. Click to mark as used up.</li>
+        <li>&#128722; = you may need to buy this. Click to confirm you have it.</li>
+        <li><strong>Copy shopping list</strong> — copies just the items you need to buy. The list updates live if you toggle items.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Food photos</h2>
+      <p>Recipe cards can show food photos from Unsplash. This is off by default — enable it in Settings under "Show food photos on recipe cards." Photos are matched by recipe title and may not always be a perfect match for the dish.</p>
+    </section>
+
+    <section>
+      <h2>Saving and sharing recipes</h2>
+      <p>Click the star on any recipe card to save it. Saved recipes are always accessible — even on the free tier, you'll never lose access to recipes you've saved.</p>
+      <ul>
+        <li><strong>Share</strong> — share a saved recipe with another Recipe Wizard user by email or display name</li>
+        <li><strong>Download</strong> — export a single recipe or all saved recipes as text or JSON</li>
+      </ul>
     </section>
 
     <section>
       <h2>Pantry</h2>
-      <p>Open the sidebar (&#9776; button) to see and manage your pantry. Add items with the input at the top, remove with the &times; button. The confidence badge (have/likely/maybe) cycles when clicked. The Wizard uses your pantry to suggest recipes with what you already have.</p>
+      <p>Open the sidebar (&#9776; button) to see and manage your pantry. The Wizard uses your pantry to suggest recipes with what you already have.</p>
+      <ul>
+        <li><strong>Add items</strong> — type in the input at the top and press +</li>
+        <li><strong>Edit items</strong> — click any item name to edit it inline. Press Enter to save, Escape to cancel.</li>
+        <li><strong>Categories</strong> — hover over an item to see the category dropdown. Assign categories like protein, produce, spices, dairy, etc.</li>
+        <li><strong>Filter by category</strong> — use the All/Show/Hide buttons above the list. "Show" displays only checked categories. "Hide" hides checked categories. "All" resets.</li>
+        <li><strong>Confidence</strong> — the badge (have/likely/maybe) cycles when clicked, indicating how sure you are the item is on hand</li>
+        <li><strong>Remove</strong> — click the &times; button to remove an item</li>
+      </ul>
     </section>
 
     <section>
       <h2>Households</h2>
-      <p>Recipe Wizard supports multi-person households. Invite family members via Settings — they'll get their own account but share your pantry, saved recipes, and conversation history. Each person has their own preferences and cooking experience level.</p>
+      <p>Recipe Wizard supports multi-person households. Invite family members via Settings — they'll get their own account and share your pantry, saved recipes, and preferences. Each person has their own private chat history and cooking experience level.</p>
+      <ul>
+        <li><strong>Residents</strong> — add household members who don't use the app themselves (kids, elderly relatives). Their allergies and preferences are tracked and honored when you include them in "Cooking for."</li>
+        <li><strong>Subscription benefit</strong> — if any household member has a Pro subscription, all members get unlimited access</li>
+      </ul>
     </section>
 
     <section>
@@ -71,6 +110,11 @@ const user = locals.user;
     <section>
       <h2>Pro subscription</h2>
       <p><strong>$2/month</strong> or <strong>$20/year</strong> for unlimited recipe generations. Cancel anytime — your subscription stays active until the end of the billing period, and your saved recipes are always accessible. Manage your subscription on the <a href="/subscribe">Subscribe page</a>.</p>
+    </section>
+
+    <section>
+      <h2>What's New</h2>
+      <p>When new features are added, you'll see a "What's New" popup on your next visit. It only appears once per update — dismiss it and it won't come back until there's something new.</p>
     </section>
 
     <section class="suggestion-box">
