@@ -352,6 +352,8 @@ header {
   opacity: 0;
   transition: opacity 0.15s;
   cursor: pointer;
+  position: relative;
+  z-index: 3;
 }
 
 .pantry-item:hover .pantry-cat-select { opacity: 1; }

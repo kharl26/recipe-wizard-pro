@@ -15,8 +15,8 @@ const CONFIDENCE_LABELS = { certain: 'have', likely: 'likely', maybe: 'maybe' };
 const CONFIDENCE_NEXT = { certain: 'likely', likely: 'maybe', maybe: 'certain' };
 
 const CATEGORIES = [
-  'protein', 'produce', 'dairy', 'grains', 'spices',
-  'condiments', 'oils', 'baking', 'beverages', 'spirits', 'other'
+  'baking', 'beverages', 'condiments', 'dairy', 'grains',
+  'oils', 'other', 'produce', 'protein', 'spices', 'spirits'
 ];
 
 export function renderPantrySection(pantry) {
@@ -79,9 +79,9 @@ export function renderPantrySection(pantry) {
         <button type="submit" title="Add item to pantry">+</button>
       </form>
       <div class="pantry-search-row">
-        <span class="pantry-search-icon">&#128269;</span>
         <input type="text" class="pantry-search" placeholder="Search pantry..." autocomplete="off"
                oninput="searchPantry(this.value)">
+        <span class="pantry-search-icon">&#128269;</span>
       </div>
       ${filterHtml}
       <div class="pantry-list-wrap">
