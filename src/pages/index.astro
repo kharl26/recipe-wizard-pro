@@ -230,13 +230,6 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
     <div class="app-layout">
       <!-- Sidebar -->
       <aside class="sidebar" x-show="sidebarOpen" x-cloak id="sidebar">
-        <div class="sidebar-section">
-          <h3>Household</h3>
-          {people.map(p => (
-            <div class="sidebar-item">{p.name}</div>
-          ))}
-          {people.length === 0 && <div class="sidebar-empty">Complete onboarding to set up your household.</div>}
-        </div>
         <Fragment set:html={renderPantrySection(pantry)} />
       </aside>
       <div class="sidebar-resizer" x-show="sidebarOpen" x-cloak id="sidebar-resizer" title="Drag to resize"></div>
@@ -690,6 +683,14 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
         });
       }
     }
+
+    window.searchPantry = (query) => {
+      const q = query.toLowerCase().trim();
+      document.querySelectorAll('.pantry-item').forEach(item => {
+        const name = item.querySelector('.pantry-name')?.textContent?.toLowerCase() || '';
+        item.style.display = (!q || name.includes(q)) ? '' : 'none';
+      });
+    };
 
     window.editPantryItem = (el, encodedItem) => {
       const current = el.textContent.trim();

@@ -324,6 +324,32 @@ header {
 
 .pantry-item:hover .pantry-cat-select { opacity: 1; }
 
+.pantry-search-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.pantry-search-icon {
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+.pantry-search {
+  flex: 1;
+  font-size: 0.78rem;
+  font-family: var(--font);
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+
+.pantry-search:focus {
+  border-color: var(--accent);
+}
+
 .pantry-filters {
   margin-bottom: 6px;
   padding: 4px 0;

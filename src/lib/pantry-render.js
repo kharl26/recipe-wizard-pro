@@ -78,6 +78,11 @@ export function renderPantrySection(pantry) {
         <input type="text" name="item" placeholder="Add item..." autocomplete="off" required>
         <button type="submit" title="Add item to pantry">+</button>
       </form>
+      <div class="pantry-search-row">
+        <span class="pantry-search-icon">&#128269;</span>
+        <input type="text" class="pantry-search" placeholder="Search pantry..." autocomplete="off"
+               oninput="searchPantry(this.value)">
+      </div>
       ${filterHtml}
       <div class="pantry-list"
            @pantry-filter-change.window="
