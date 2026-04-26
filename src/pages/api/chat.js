@@ -116,8 +116,11 @@ export async function POST({ request, locals }) {
       const cfu = result.cookingForUpdate;
       const members = (cfu.members || []).map(m => escapeHtml(m));
       const guests = cfu.guests || 0;
-      let listText = members.join(', ');
-      if (guests > 0) listText += ` + ${guests} guest${guests === 1 ? '' : 's'}`;
+      const guestLabel = guests > 0 ? `${guests} guest${guests === 1 ? '' : 's'}` : '';
+      const parts = [...members, ...(guestLabel ? [guestLabel] : [])];
+      let listText = parts.length > 2
+        ? parts.slice(0, -1).join(', ') + ', and ' + parts[parts.length - 1]
+        : parts.join(' and ');
       if (cfu.notes) listText += ` (${escapeHtml(cfu.notes)})`;
       html += `<div id="cooking-for-display" hx-swap-oob="innerHTML" class="cooking-for-row">
         <span class="cooking-for-label">Cooking for:</span>
