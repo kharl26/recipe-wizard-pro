@@ -226,10 +226,16 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
           <div id="recipe-shelf-wrap" class="recipe-shelf-wrap" x-data="{ showShelf: true }">
             <button class="shelf-toggle" @click="
               const ch = document.getElementById('chat-history');
-              const distFromBottom = ch ? ch.scrollHeight - ch.scrollTop - ch.clientHeight : 0;
+              let anchor = null;
+              if (ch) {
+                const chRect = ch.getBoundingClientRect();
+                for (const msg of ch.querySelectorAll('.chat-message')) {
+                  if (msg.getBoundingClientRect().bottom <= chRect.bottom + 5) anchor = msg;
+                }
+              }
               showShelf = !showShelf;
               requestAnimationFrame(() => requestAnimationFrame(() => {
-                if (ch) ch.scrollTop = ch.scrollHeight - ch.clientHeight - distFromBottom;
+                if (anchor) anchor.scrollIntoView({ block: 'end', behavior: 'instant' });
               }));
             " x-text="showShelf ? 'Hide recipes' : 'Show recipes'"></button>
             <div id="recipe-shelf" class="recipe-shelf" x-show="showShelf"></div>
