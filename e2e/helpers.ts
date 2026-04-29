@@ -211,7 +211,28 @@ export async function mockSignIn(page: Page, opts: { success?: boolean; error?: 
       await route.fulfill({
         status: 500,
         contentType: 'application/json',
-        body: JSON.stringify({ error: opts.error || 'Failed to send magic link' }),
+        body: JSON.stringify({ error: opts.error || 'Failed to send sign-in email' }),
+      });
+    } else {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true }),
+      });
+    }
+  });
+}
+
+/**
+ * Mock the OTP code-verification endpoint.
+ */
+export async function mockVerifyOtp(page: Page, opts: { success?: boolean; error?: string } = {}) {
+  await page.route('**/api/auth/verify-otp', async (route) => {
+    if (opts.success === false) {
+      await route.fulfill({
+        status: 400,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: opts.error || 'Invalid or expired code.' }),
       });
     } else {
       await route.fulfill({

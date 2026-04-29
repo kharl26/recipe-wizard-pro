@@ -27,8 +27,8 @@ test.describe('Homepage (logged out)', () => {
     await signInBtn.click();
     await expect(page.locator('.signin-modal')).toBeVisible();
     await expect(page.locator('.signin-modal h2')).toContainText('Sign in');
-    await expect(page.locator('.signin-input')).toBeVisible();
-    await expect(page.locator('.signin-btn')).toBeVisible();
+    await expect(page.locator('#signin-form .signin-input')).toBeVisible();
+    await expect(page.locator('#signin-form .signin-btn')).toBeVisible();
   });
 
   test('modal closes when × is clicked', async ({ page }) => {

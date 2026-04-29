@@ -1692,6 +1692,19 @@ main {
 .signin-status.success { color: var(--green); }
 .signin-status.error { color: var(--red, #dc2626); }
 
+.verify-form {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.verify-input {
+  text-align: center;
+  font-size: 1.4rem;
+  letter-spacing: 0.4em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
 /* Sign-out button in header */
 .signout-btn {
   background: none;

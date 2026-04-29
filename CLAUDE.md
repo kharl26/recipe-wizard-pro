@@ -7,7 +7,7 @@ The personal single-user Recipe Wizard (Week 5) has been retired and archived at
 
 ## Status (2026-04-15)
 - **Deployed**: Vercel free tier, auto-deploys on git push to main
-- **Domain**: recipewizard.aachenor.com (custom domain recipewizard.aachenor.com still pending)
+- **Domain**: recipewizard.aachenor.com (live)
 - **Stripe**: sandbox/test mode (flip to live when ready for real charges)
 - **Users**: Bob (admin) + Alice (friend); household `97cf39fb-fe90-4bcf-ab50-ce75d8b87c17`
 - **Tests**: 28 Playwright tests, all passing
@@ -56,7 +56,7 @@ src/
     admin.astro        # Admin dashboard (owner only): users, usage, messages, tiers
     auth/callback.astro # Magic link exchange + "close other tab" hint
     api/
-      auth/             # signin (magic link), signout
+      auth/             # signin (sends email), verify-otp (6-digit code), signout
       chat.js           # Recipe generation (auth gate + usage gate + cookingFor)
       bookmarks.js      # Save/remove household recipes
       pantry.js         # POST/PATCH/DELETE — household pantry
@@ -94,7 +94,7 @@ playwright.config.ts
 - **Factory pattern for DB**: `createDB(supabase, profile)` returns an object with all methods pre-bound to the user's household context. Callers don't manipulate IDs.
 - **Household-level subscription benefits**: any member's active subscription grants unlimited access to ALL members. One Stripe account covers the family.
 - **Residents (non-registered household members)**: households can include people without accounts — kids, elderly relatives. Allergies/preferences tracked; "cooking for" selector filters which members' prefs apply to a given request. Residents can later be merged into a registered account.
-- **Magic link auth only**: no passwords at launch. Supabase handles session cookies (HTTP-only).
+- **Hybrid passwordless auth (magic link + 6-digit code)**: no passwords. Same email contains BOTH a clickable magic link AND a 6-digit OTP code. User can use either. Code-entry path (`/api/auth/verify-otp`) bypasses the PKCE cookie-context bug that breaks magic-link clicks across different browser contexts (Firefox Multi-Account Containers, mobile in-app browsers like Gmail's Custom Tabs, switching browsers, incognito). Supabase handles session cookies (HTTP-only). Custom SMTP via Resend (sender `noreply@mail.aachenor.com`) configured in Supabase dashboard. Migrated off Supabase's default SMTP 2026-04-28 — default was rate-limited to ~2 emails/hour. Email template (Supabase dashboard → Auth → Emails → "Magic Link") must include both `{{ .ConfirmationURL }}` and `{{ .Token }}` for the hybrid flow to work.
 - **Server-enforced gates**: usage limit, auth, and data access all enforced server-side in middleware + `canGenerate()`. RLS is the backstop if code has a bug.
 - **AI prompt branches onboarding**: new household gets full interview (including pantry/cuisines); user joining existing household gets personal-only interview (allergies, dislikes, experience).
 - **No recipe caching**: per-user prompts make shared caching impractical; cost-per-request is acceptable at current scale.
@@ -118,11 +118,16 @@ playwright.config.ts
 - `UNSPLASH_ACCESS_KEY` — Unsplash API key for food photos (set in Vercel dashboard)
 - `SUPABASE_SERVICE_ROLE_KEY` — set in Vercel (Production only) for admin page; required for admin dashboard, beta tester management, and cross-user queries
 
+**SMTP credentials (NOT in Vercel — configured in Supabase dashboard):**
+- Resend API key (`recipe-wizard-pro` key, sending access only)
+- Host: `smtp.resend.com`, port `587`, username `resend`, password = Resend API key
+- Sender: `noreply@mail.aachenor.com`
+- Backup copy of API key + DNS records: `~/Documents/4TBSSD/recipe-wizard-pro-keys.txt`
+
 ## Not Yet Built (Deferred)
 - Phase 10: local instance admin integration (lower priority now that personal retired)
 - Dietary constraint preferences: user-specified constraints like "low sodium", "max 500 cal", "diabetic-friendly" that feed into recipe generation (nutrition display is built; constraint filtering is not yet)
 - AI-generated food photos (DALL-E/Flux): separate photo_style setting with per-generation cost; tier add-on pricing TBD
-- Custom domain: recipewizard.aachenor.com (Ionos CNAME → Vercel)
 - Sticky modal controls (Kitchen Mode + close visible on scroll) — CSS sticky broken by Alpine.js x-show transitions; needs JavaScript approach
 - Guest-to-user merge UI (endpoint exists, no UI yet)
 - Switch from Stripe API check per request → webhook-based tracking

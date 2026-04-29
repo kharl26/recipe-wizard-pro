@@ -143,13 +143,20 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
     <div class="signin-modal">
       <button class="modal-close" @click="showSignIn = false">&times;</button>
       <h2>Sign in to Recipe Wizard</h2>
-      <p>Enter your email and we'll send you a magic link — no password needed.</p>
+      <p>Enter your email and we'll send you a sign-in link plus a 6-digit code — no password needed.</p>
       <form id="signin-form" onsubmit="handleSignIn(event)">
         <input type="email" name="email" placeholder="you@example.com" required autocomplete="email" class="signin-input">
-        <button type="submit" class="signin-btn">Send magic link</button>
+        <button type="submit" class="signin-btn">Send sign-in email</button>
         <div id="signin-status" class="signin-status"></div>
       </form>
-      <p class="signin-note">The email will arrive from <strong>noreply@mail.app.supabase.io</strong> (our auth provider) with a link to sign you in. Check your spam folder if you don't see it within a minute.</p>
+      <form id="verify-form" onsubmit="handleVerifyCode(event)" class="verify-form" hidden>
+        <p class="signin-note">Click the link in your email <strong>or</strong> enter the 6-digit code below.</p>
+        <input type="hidden" name="email" id="verify-email">
+        <input type="text" name="token" placeholder="123456" required inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" class="signin-input verify-input">
+        <button type="submit" class="signin-btn">Sign in with code</button>
+        <div id="verify-status" class="signin-status"></div>
+      </form>
+      <p class="signin-note">The email will arrive from <strong>noreply@mail.aachenor.com</strong>. Check your spam folder if you don't see it within a minute.</p>
     </div>
   </div>
 
@@ -447,7 +454,7 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
       } catch (err) { console.error('Experience update failed:', err); }
     };
 
-    // Sign-in handler
+    // Sign-in handler — sends the email containing both link and code
     window.handleSignIn = async (e) => {
       e.preventDefault();
       const form = e.target;
@@ -467,19 +474,56 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
         const result = await resp.json();
         if (result.ok) {
           status.className = 'signin-status success';
-          status.textContent = 'Check your email for the magic link!';
-          btn.textContent = 'Link sent!';
+          status.textContent = 'Email sent!';
+          btn.textContent = 'Email sent';
+          const verifyForm = document.getElementById('verify-form');
+          document.getElementById('verify-email').value = email;
+          verifyForm.hidden = false;
+          verifyForm.querySelector('input[name="token"]').focus();
         } else {
           status.className = 'signin-status error';
           status.textContent = result.error || 'Something went wrong.';
           btn.disabled = false;
-          btn.textContent = 'Send magic link';
+          btn.textContent = 'Send sign-in email';
         }
       } catch (err) {
         status.className = 'signin-status error';
         status.textContent = 'Network error. Please try again.';
         btn.disabled = false;
-        btn.textContent = 'Send magic link';
+        btn.textContent = 'Send sign-in email';
+      }
+    };
+
+    // Code-entry handler — verifies the 6-digit token from the email
+    window.handleVerifyCode = async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const status = document.getElementById('verify-status');
+      const btn = form.querySelector('button[type="submit"]');
+
+      btn.disabled = true;
+      btn.textContent = 'Signing in...';
+      status.textContent = '';
+
+      try {
+        const resp = await fetch('/api/auth/verify-otp', {
+          method: 'POST',
+          body: new FormData(form),
+        });
+        const result = await resp.json();
+        if (result.ok) {
+          window.location.href = '/';
+        } else {
+          status.className = 'signin-status error';
+          status.textContent = result.error || 'Invalid or expired code.';
+          btn.disabled = false;
+          btn.textContent = 'Sign in with code';
+        }
+      } catch (err) {
+        status.className = 'signin-status error';
+        status.textContent = 'Network error. Please try again.';
+        btn.disabled = false;
+        btn.textContent = 'Sign in with code';
       }
     };
 
