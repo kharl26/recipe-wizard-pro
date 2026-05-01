@@ -350,6 +350,20 @@ header {
 .pantry-item:hover .pantry-cat-select,
 .pantry-cat-select.open { display: inline-block; }
 
+.pantry-item.editing .pantry-cat-select,
+.pantry-item.editing .pantry-confidence,
+.pantry-item.editing .pantry-remove { display: none; }
+
+.pantry-item.recently-edited .pantry-cat-select,
+.pantry-item.recently-edited .pantry-confidence,
+.pantry-item.recently-edited .pantry-remove { display: inline-block; }
+.pantry-item.recently-edited {
+  background: #fde68a;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 2px #f59e0b;
+  transition: background 0.4s ease, box-shadow 0.4s ease;
+}
+
 .pantry-search-row {
   display: flex;
   align-items: center;

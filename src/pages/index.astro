@@ -710,7 +710,14 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
           if (!newList) return;
           if (scrollToItem) {
             const target = [...newList.querySelectorAll('.pantry-name')].find(el => el.textContent.trim().toLowerCase() === scrollToItem.toLowerCase());
-            if (target) { target.closest('.pantry-item')?.scrollIntoView({ block: 'nearest' }); updatePantryScrollIndicators(newList); return; }
+            const item = target?.closest('.pantry-item');
+            if (item) {
+              newList.scrollTop = Math.max(0, item.offsetTop - (newList.clientHeight - item.offsetHeight) / 2);
+              item.classList.add('recently-edited');
+              setTimeout(() => item.classList.remove('recently-edited'), 3000);
+              updatePantryScrollIndicators(newList);
+              return;
+            }
           }
           newList.scrollTop = scrollTop;
           updatePantryScrollIndicators(newList);
@@ -740,11 +747,18 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
 
     window.editPantryItem = (el, encodedItem) => {
       const current = el.textContent.trim();
+      const row = el.parentNode;
       const input = document.createElement('input');
       input.type = 'text';
       input.value = current;
       input.className = 'pantry-edit-input';
       input.maxLength = 60;
+      const restore = () => {
+        el.textContent = current;
+        el.style.display = '';
+        row.classList.remove('editing');
+        input.remove();
+      };
       const save = async () => {
         const newName = input.value.trim();
         if (newName && newName !== current) {
@@ -754,14 +768,13 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
             return;
           }
         }
-        el.textContent = current;
-        el.style.display = '';
-        input.remove();
+        restore();
       };
-      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } if (e.key === 'Escape') { el.style.display = ''; input.remove(); } });
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } if (e.key === 'Escape') { restore(); } });
       input.addEventListener('blur', save);
+      row.classList.add('editing');
       el.style.display = 'none';
-      el.parentNode.insertBefore(input, el);
+      row.insertBefore(input, el);
       input.focus();
       input.select();
     };
