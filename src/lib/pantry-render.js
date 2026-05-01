@@ -49,6 +49,8 @@ export function renderPantrySection(pantry) {
                 title="Click to edit name. Enter to save, Escape to cancel."
                 onclick="editPantryItem(this, '${encodedItem}')">${escapedItem}</span>
           <select class="pantry-cat-select" title="Set category (hover to see)"
+                  onmousedown="this.classList.add('open')"
+                  onblur="this.classList.remove('open')"
                   onchange="changePantryCategory('${encodedItem}', this.value)"
                   ><option value="">--</option>${CATEGORIES.map(c =>
                     `<option value="${c}"${c === item.category ? ' selected' : ''}>${c}</option>`

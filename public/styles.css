@@ -347,7 +347,8 @@ header {
   display: none;
 }
 
-.pantry-item:hover .pantry-cat-select { display: inline-block; }
+.pantry-item:hover .pantry-cat-select,
+.pantry-cat-select.open { display: inline-block; }
 
 .pantry-search-row {
   display: flex;
