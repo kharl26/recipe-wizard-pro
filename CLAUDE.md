@@ -139,4 +139,5 @@ playwright.config.ts
 - Switch from Stripe API check per request → webhook-based tracking
 - Stripe live mode
 - Voice interaction (Web Speech API)
+- Multi-course meal planner: user picks courses (appetizer / salad / protein / vegetables / starch / dessert), Wizard generates a coordinated meal with shared mise en place, equipment-aware scheduling, and a unified timeline so all hot items finish together. Estimate ~8–12h focused work; main risk is AI coordination quality at Haiku-class — recommend a prompt-only spike (no UI) before scoping. Bigger token + latency cost per generation than 4-recipe mode. Per-course swap-out without regenerating the whole meal is a nontrivial sub-feature.
 - Test infra: e2e suite can't authenticate SSR pages (no helper to mint a Supabase session cookie). Documented in `e2e/07-constraints.spec.ts`. Unblocking it would enable rendered-settings tests and end-to-end flow tests for dietary constraints. Alternative: add a `node:test`/vitest runner for pure functions like `checkRecipeViolations` and `getCookingForConstraints` merge logic.
