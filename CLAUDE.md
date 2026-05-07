@@ -5,12 +5,12 @@ Live at **https://recipewizard.aachenor.com** — the active production app Bob 
 
 The personal single-user Recipe Wizard (Week 5) has been retired and archived at `~/Documents/4TBSSD/recipe-wizard-old/` — do not modify it. All development happens here.
 
-## Status (2026-04-15)
+## Status (2026-05-06)
 - **Deployed**: Vercel free tier, auto-deploys on git push to main
 - **Domain**: recipewizard.aachenor.com (live)
 - **Stripe**: sandbox/test mode (flip to live when ready for real charges)
 - **Users**: Bob (admin) + Alice (friend); household `97cf39fb-fe90-4bcf-ab50-ce75d8b87c17`
-- **Tests**: 28 Playwright tests, all passing
+- **Tests**: 35 Playwright tests, all passing
 
 ## Tech Stack
 - Astro 5 SSR (`@astrojs/vercel` adapter)
@@ -74,10 +74,15 @@ src/
   middleware.js         # Auth session from cookies + CSRF origin check
 supabase/
   migrations/
-    001_schema.sql           # Core tables + RLS + auto-create-household trigger
-    002_allergy_category.sql # Add 'allergy' to preference categories
-    003_user_messages.sql    # Suggestions/feedback to admin
-    004_household_guests.sql # Residents + preferences.guest_id
+    001_schema.sql              # Core tables + RLS + auto-create-household trigger
+    002_allergy_category.sql    # Add 'allergy' to preference categories
+    003_user_messages.sql       # Suggestions/feedback to admin
+    004_household_guests.sql    # Residents + preferences.guest_id
+    005_show_photos.sql         # Profile toggle for Unsplash photos on cards
+    006_per_user_conversations.sql
+    007_beta_tester_activity_log.sql
+    008_changelog_seen.sql
+    009_dietary_constraints.sql # Per-person numeric per-serving limits + RLS
 e2e/
   helpers.ts          # fakeAuth, mockAiChat, mockSignIn, MOCK_RECIPES
   01-homepage.spec.ts
@@ -86,6 +91,7 @@ e2e/
   04-subscribe-page.spec.ts
   05-api-auth-gates.spec.ts
   06-message-api.spec.ts
+  07-constraints.spec.ts        # Settings redirect + documented SSR-auth gap
 playwright.config.ts
 ```
 
@@ -98,6 +104,7 @@ playwright.config.ts
 - **Server-enforced gates**: usage limit, auth, and data access all enforced server-side in middleware + `canGenerate()`. RLS is the backstop if code has a bug.
 - **AI prompt branches onboarding**: new household gets full interview (including pantry/cuisines); user joining existing household gets personal-only interview (allergies, dislikes, experience).
 - **No recipe caching**: per-user prompts make shared caching impractical; cost-per-request is acceptable at current scale.
+- **Dietary constraints (numeric)**: structured per-person per-serving limits (calories, sodium_mg, carbs_g, fat_g, protein_g, fiber_g) with `lte`/`gte` operators. Distinct from `preferences` (free-text categorical). Stored in `dietary_constraints`. Resolver in `db.getCookingForConstraints` merges across the active cooking-for set (min for `lte`, max for `gte`) and flags conflicts. AI gets a strict rules block in the prompt; `chat.js` runs a server-side filter as a backstop and shows a notice listing which limits each dropped recipe missed. Recipe modal colors any nutrition tile red when the value violates the *current viewer's* own rules. Migration 009 has more thorough RLS than `preferences` — the legacy table's "user_id = auth.uid()" write policy silently fails for guest_id rows; 009 covers both paths explicitly.
 
 ## Tiers
 - **free**: 10 generations/month; resets monthly; saved recipes always accessible
@@ -126,10 +133,10 @@ playwright.config.ts
 
 ## Not Yet Built (Deferred)
 - Phase 10: local instance admin integration (lower priority now that personal retired)
-- Dietary constraint preferences: user-specified constraints like "low sodium", "max 500 cal", "diabetic-friendly" that feed into recipe generation (nutrition display is built; constraint filtering is not yet)
 - AI-generated food photos (DALL-E/Flux): separate photo_style setting with per-generation cost; tier add-on pricing TBD
 - Sticky modal controls (Kitchen Mode + close visible on scroll) — CSS sticky broken by Alpine.js x-show transitions; needs JavaScript approach
 - Guest-to-user merge UI (endpoint exists, no UI yet)
 - Switch from Stripe API check per request → webhook-based tracking
 - Stripe live mode
 - Voice interaction (Web Speech API)
+- Test infra: e2e suite can't authenticate SSR pages (no helper to mint a Supabase session cookie). Documented in `e2e/07-constraints.spec.ts`. Unblocking it would enable rendered-settings tests and end-to-end flow tests for dietary constraints. Alternative: add a `node:test`/vitest runner for pure functions like `checkRecipeViolations` and `getCookingForConstraints` merge logic.
