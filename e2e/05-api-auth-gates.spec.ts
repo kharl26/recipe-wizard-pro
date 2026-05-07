@@ -59,4 +59,28 @@ test.describe('API auth gates', () => {
     });
     expect(resp.status()).toBe(401);
   });
+
+  test('POST /api/constraints returns 401 when unauthenticated', async ({ request }) => {
+    const resp = await request.post('/api/constraints', {
+      data: { metric: 'calories', op: 'lte', value: 500 },
+    });
+    expect(resp.status()).toBe(401);
+  });
+
+  test('DELETE /api/constraints returns 401 when unauthenticated', async ({ request }) => {
+    const resp = await request.delete('/api/constraints?id=x');
+    expect(resp.status()).toBe(401);
+  });
+
+  test('POST /api/guest/constraint returns 401 when unauthenticated', async ({ request }) => {
+    const resp = await request.post('/api/guest/constraint', {
+      data: { guest_id: 'x', metric: 'calories', op: 'lte', value: 500 },
+    });
+    expect(resp.status()).toBe(401);
+  });
+
+  test('DELETE /api/guest/constraint returns 401 when unauthenticated', async ({ request }) => {
+    const resp = await request.delete('/api/guest/constraint?id=x');
+    expect(resp.status()).toBe(401);
+  });
 });

@@ -12,6 +12,18 @@ const STAPLES = [
   'cooking spray', 'butter', 'unsalted butter', 'salted butter',
 ];
 
+// Remove "[SAVED]" markers the AI used to insert. Saved-state is now
+// represented by the filled bookmark star, not by visible text.
+export function stripSavedMarker(recipe) {
+  if (!recipe || typeof recipe !== 'object') return recipe;
+  const clean = (s) => typeof s === 'string'
+    ? s.replace(/\s*\[saved\]\s*/gi, ' ').replace(/\s+/g, ' ').trim()
+    : s;
+  if (recipe.title) recipe.title = clean(recipe.title);
+  if (recipe.description) recipe.description = clean(recipe.description);
+  return recipe;
+}
+
 export function escapeHtml(str) {
   return String(str || '')
     .replace(/&/g, '&amp;')
@@ -69,8 +81,28 @@ export function renderChatMarkdown(text) {
 //
 // Includes a "Kitchen mode" button that toggles a class on the modal for
 // full-viewport layout with extra-large fonts.
-export function renderRecipeModalBody(recipe, pantryItems = []) {
-  const r = recipe;
+// Build one nutrition tile, marking it as a violation when the value falls
+// outside the viewer's own dietary rules. `viewerRules` is the same rules
+// shape returned by db.getCookingForConstraints({metric: {lte?, gte?}}).
+function nutItem(rawValue, displayValue, label, metricKey, viewerRules) {
+  const rule = viewerRules?.[metricKey];
+  let cls = 'nut-item';
+  let title = '';
+  if (rule && typeof rawValue === 'number') {
+    if (typeof rule.lte === 'number' && rawValue > rule.lte) {
+      cls += ' nut-violation';
+      title = `Exceeds your limit of ${rule.lte}`;
+    } else if (typeof rule.gte === 'number' && rawValue < rule.gte) {
+      cls += ' nut-violation';
+      title = `Below your minimum of ${rule.gte}`;
+    }
+  }
+  const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
+  return `<div class="${cls}"${titleAttr}><span class="nut-value">${displayValue}</span><span class="nut-label">${label}</span></div>`;
+}
+
+export function renderRecipeModalBody(recipe, pantryItems = [], viewerRules = {}) {
+  const r = stripSavedMarker(recipe);
   const difficultyClass = (r.difficulty || 'Easy').toLowerCase();
   const ingredients = r.ingredients || [];
   const needToBuy = ingredients.filter(i => !isInPantry(i, pantryItems));
@@ -149,12 +181,12 @@ export function renderRecipeModalBody(recipe, pantryItems = []) {
     <div class="nutrition-info">
       <h3>Nutrition <span class="nutrition-per-serving">(per serving)</span></h3>
       <div class="nutrition-grid">
-        <div class="nut-item"><span class="nut-value">${r.nutrition.calories}</span><span class="nut-label">cal</span></div>
-        <div class="nut-item"><span class="nut-value">${r.nutrition.protein_g}g</span><span class="nut-label">protein</span></div>
-        <div class="nut-item"><span class="nut-value">${r.nutrition.carbs_g}g</span><span class="nut-label">carbs</span></div>
-        <div class="nut-item"><span class="nut-value">${r.nutrition.fat_g}g</span><span class="nut-label">fat</span></div>
-        <div class="nut-item"><span class="nut-value">${r.nutrition.fiber_g}g</span><span class="nut-label">fiber</span></div>
-        <div class="nut-item"><span class="nut-value">${r.nutrition.sodium_mg}mg</span><span class="nut-label">sodium</span></div>
+        ${nutItem(r.nutrition.calories, `${r.nutrition.calories}`, 'cal', 'calories', viewerRules)}
+        ${nutItem(r.nutrition.protein_g, `${r.nutrition.protein_g}g`, 'protein', 'protein_g', viewerRules)}
+        ${nutItem(r.nutrition.carbs_g, `${r.nutrition.carbs_g}g`, 'carbs', 'carbs_g', viewerRules)}
+        ${nutItem(r.nutrition.fat_g, `${r.nutrition.fat_g}g`, 'fat', 'fat_g', viewerRules)}
+        ${nutItem(r.nutrition.fiber_g, `${r.nutrition.fiber_g}g`, 'fiber', 'fiber_g', viewerRules)}
+        ${nutItem(r.nutrition.sodium_mg, `${r.nutrition.sodium_mg}mg`, 'sodium', 'sodium_mg', viewerRules)}
       </div>
       <p class="nutrition-disclaimer">Estimates based on USDA reference data. Not lab-tested.</p>
     </div>` : ''}

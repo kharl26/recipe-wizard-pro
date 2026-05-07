@@ -1,14 +1,23 @@
 import { createDB } from '../../lib/db.js';
-import { escapeHtml, isInPantry, renderRecipeModalBody } from '../../lib/recipe-render.js';
+import { escapeHtml, isInPantry, renderRecipeModalBody, stripSavedMarker } from '../../lib/recipe-render.js';
 
-function renderBookmarkCard(bookmark, pantryItems) {
-  const r = bookmark.recipe;
+function renderBookmarkCard(bookmark, pantryItems, viewerRules = {}) {
+  const r = stripSavedMarker(bookmark.recipe);
   const difficultyClass = (r.difficulty || 'Easy').toLowerCase();
   const ingredients = r.ingredients || [];
   const needToBuyCount = ingredients.filter(i => !isInPantry(i, pantryItems)).length;
 
   return `
     <div class="recipe-card bookmark-card" x-data="{ showModal: false }">
+      <div class="recipe-card-img"
+           hx-get="/api/image?q=${encodeURIComponent(r.title + ' food dish')}"
+           hx-trigger="intersect once"
+           hx-swap="innerHTML">
+        <div class="img-placeholder recipe-placeholder">
+          <span class="placeholder-cuisine">${escapeHtml(r.cuisine || 'Recipe')}</span>
+          <span class="placeholder-difficulty ${difficultyClass}">${escapeHtml(r.difficulty || 'Easy')}</span>
+        </div>
+      </div>
       <div class="recipe-card-body" @click="showModal = true">
         <h3 class="recipe-title">${escapeHtml(r.title)}</h3>
         <p class="recipe-desc">${escapeHtml(r.description)}</p>
@@ -28,7 +37,7 @@ function renderBookmarkCard(bookmark, pantryItems) {
               title="Remove from saved">&#9733;</button>
       <div class="recipe-modal-overlay" x-show="showModal" x-cloak @click.self="showModal = false">
         <div class="recipe-modal">
-          ${renderRecipeModalBody(r, pantryItems)}
+          ${renderRecipeModalBody(r, pantryItems, viewerRules)}
         </div>
       </div>
     </div>`;
@@ -59,10 +68,11 @@ export async function POST({ request, locals }) {
     const count = bookmarks.length;
     const newBookmark = result ? bookmarks.find(b => b.id === result.id) : null;
     const pantryItems = await db.getPantryItemNames();
+    const { rules: viewerRules } = await db.getCookingForConstraints([locals.user.id]);
 
     let cardHtml = '';
     if (newBookmark) {
-      cardHtml = renderBookmarkCard(newBookmark, pantryItems);
+      cardHtml = renderBookmarkCard(newBookmark, pantryItems, viewerRules);
     }
 
     return new Response(

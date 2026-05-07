@@ -1,6 +1,6 @@
-import { chat } from '../../lib/ai.js';
+import { chat, checkRecipeViolations } from '../../lib/ai.js';
 import { createDB } from '../../lib/db.js';
-import { escapeHtml, isInPantry, renderRecipeModalBody, renderChatMarkdown } from '../../lib/recipe-render.js';
+import { escapeHtml, isInPantry, renderRecipeModalBody, renderChatMarkdown, stripSavedMarker } from '../../lib/recipe-render.js';
 import { renderPantrySection } from '../../lib/pantry-render.js';
 
 export async function POST({ request, locals }) {
@@ -13,7 +13,6 @@ export async function POST({ request, locals }) {
   }
 
   const db = createDB(locals.supabase, locals.profile);
-  const showPhotos = !!locals.profile?.show_photos;
 
   try {
     const data = await request.formData();
@@ -49,11 +48,31 @@ export async function POST({ request, locals }) {
           <div class="recipe-grid shelf-grid">`;
         const savedTitles = await getSavedTitleSet(db);
         for (const b of shown) {
-          html += renderRecipeCard(b.recipe, pantryItems, savedTitles, showPhotos);
+          html += renderRecipeCard(b.recipe, pantryItems, savedTitles, viewerRules);
         }
         html += '</div></div>';
       }
 
+      return new Response(html, { headers: { 'Content-Type': 'text/html' } });
+    }
+
+    // The viewer's own dietary rules (used for per-row violation styling in
+    // the recipe modal — separate from the cooking-for set, which can include
+    // others' constraints merged in).
+    const { rules: viewerRules } = await db.getCookingForConstraints([locals.user.id]);
+
+    // Dietary-constraint conflict check: if a user has both a min and max for
+    // the same metric and they cross (e.g., calories ≤ 400 AND ≥ 600), every
+    // recipe is impossible. Surface this clearly BEFORE charging usage or
+    // calling the AI — there's no recipe that can satisfy the request.
+    const { rules: dietaryRules, conflicts: dietaryConflicts } =
+      await db.getCookingForConstraints(cookingFor);
+    if (dietaryConflicts.length > 0) {
+      await db.addConversation('user', message);
+      const list = dietaryConflicts.join(', ');
+      const html = `<div class="chat-message assistant-message">
+        <div class="message-content">Your dietary limits conflict for: <strong>${escapeHtml(list)}</strong>. No recipe can satisfy both a minimum and maximum that overlap. Please adjust your limits in <a href="/settings">Settings</a> and try again.</div>
+      </div>`;
       return new Response(html, { headers: { 'Content-Type': 'text/html' } });
     }
 
@@ -84,15 +103,47 @@ export async function POST({ request, locals }) {
     }
 
     if (result.recipes && result.recipes.length > 0) {
-      await db.logActivity('recipes_generated', { count: result.recipes.length, titles: result.recipes.map(r => r.title) });
-      const pantryItems = await db.getPantryItemNames();
-      const savedTitles = await getSavedTitleSet(db);
-      html += `<div id="recipe-shelf" hx-swap-oob="innerHTML">
-        <div class="recipe-grid shelf-grid">`;
+      // Server-side dietary filter — backstop in case the AI emits a recipe
+      // whose nutrition values violate the active rules. Drop violators and
+      // show a notice listing the specific limits each one missed (OQ#3).
+      const kept = [];
+      const dropped = [];
       for (const recipe of result.recipes) {
-        html += renderRecipeCard(recipe, pantryItems, savedTitles, showPhotos);
+        const violations = checkRecipeViolations(recipe, dietaryRules);
+        if (violations.length > 0) {
+          dropped.push({ title: recipe.title, violations });
+        } else {
+          kept.push(recipe);
+        }
       }
-      html += '</div></div>';
+
+      if (dropped.length > 0) {
+        await db.logActivity('recipes_filtered_dietary', {
+          count: dropped.length,
+          titles: dropped.map(d => d.title),
+        });
+        const lines = dropped.map(d =>
+          `<li><strong>${escapeHtml(d.title)}</strong> — ${escapeHtml(d.violations.join('; '))}</li>`
+        ).join('');
+        html += `<div class="chat-message assistant-message dietary-filter-notice">
+          <div class="message-content">
+            Filtered ${dropped.length} recipe${dropped.length === 1 ? '' : 's'} that exceeded your dietary limits:
+            <ul>${lines}</ul>
+          </div>
+        </div>`;
+      }
+
+      if (kept.length > 0) {
+        await db.logActivity('recipes_generated', { count: kept.length, titles: kept.map(r => r.title) });
+        const pantryItems = await db.getPantryItemNames();
+        const savedTitles = await getSavedTitleSet(db);
+        html += `<div id="recipe-shelf" hx-swap-oob="innerHTML">
+          <div class="recipe-grid shelf-grid">`;
+        for (const recipe of kept) {
+          html += renderRecipeCard(recipe, pantryItems, savedTitles, viewerRules);
+        }
+        html += '</div></div>';
+      }
     }
 
     if (result.pantryUpdates.length > 0) {
@@ -148,24 +199,25 @@ export async function POST({ request, locals }) {
   }
 }
 
+function normalizeTitle(t) {
+  return (t || '')
+    .toLowerCase()
+    .replace(/\[saved\]/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 async function getSavedTitleSet(db) {
   const bookmarks = await db.getBookmarks();
-  return new Set(bookmarks.map(b => (b.recipe.title || '').toLowerCase().trim()));
+  return new Set(bookmarks.map(b => normalizeTitle(b.recipe.title)));
 }
 
 function isSaved(recipe, savedTitles) {
-  if (/\[SAVED\]/i.test(recipe.description || '')) return true;
-  if (savedTitles.has((recipe.title || '').toLowerCase().trim())) return true;
-  const t = (recipe.title || '').toLowerCase().trim();
-  if (t.length >= 10) {
-    for (const saved of savedTitles) {
-      if (saved.includes(t) || t.includes(saved)) return true;
-    }
-  }
-  return false;
+  return savedTitles.has(normalizeTitle(recipe.title));
 }
 
-function renderRecipeCard(recipe, pantryItems = [], savedTitles = new Set(), showPhotos = false) {
+function renderRecipeCard(recipe, pantryItems = [], savedTitles = new Set(), viewerRules = {}) {
+  recipe = stripSavedMarker(recipe);
   const difficultyClass = (recipe.difficulty || 'Easy').toLowerCase();
   const recipeB64 = Buffer.from(JSON.stringify(recipe)).toString('base64');
   const ingredients = recipe.ingredients || [];
@@ -174,7 +226,7 @@ function renderRecipeCard(recipe, pantryItems = [], savedTitles = new Set(), sho
 
   return `
     <div class="recipe-card" x-data="{ showModal: false }">
-      ${showPhotos ? `<div class="recipe-card-img"
+      <div class="recipe-card-img"
            hx-get="/api/image?q=${encodeURIComponent(recipe.title + ' food dish')}"
            hx-trigger="intersect once"
            hx-swap="innerHTML">
@@ -182,12 +234,7 @@ function renderRecipeCard(recipe, pantryItems = [], savedTitles = new Set(), sho
           <span class="placeholder-cuisine">${escapeHtml(recipe.cuisine || 'Recipe')}</span>
           <span class="placeholder-difficulty ${difficultyClass}">${escapeHtml(recipe.difficulty || 'Easy')}</span>
         </div>
-      </div>` : `<div class="recipe-card-img">
-        <div class="img-placeholder recipe-placeholder">
-          <span class="placeholder-cuisine">${escapeHtml(recipe.cuisine || 'Recipe')}</span>
-          <span class="placeholder-difficulty ${difficultyClass}">${escapeHtml(recipe.difficulty || 'Easy')}</span>
-        </div>
-      </div>`}
+      </div>
       <div class="recipe-card-body" @click="showModal = true">
         <h3 class="recipe-title">${escapeHtml(recipe.title)}</h3>
         <p class="recipe-desc">${escapeHtml(recipe.description)}</p>
@@ -210,7 +257,7 @@ function renderRecipeCard(recipe, pantryItems = [], savedTitles = new Set(), sho
       }
       <div class="recipe-modal-overlay" x-show="showModal" x-cloak @click.self="showModal = false">
         <div class="recipe-modal">
-          ${renderRecipeModalBody(recipe, pantryItems)}
+          ${renderRecipeModalBody(recipe, pantryItems, viewerRules)}
         </div>
       </div>
     </div>`;

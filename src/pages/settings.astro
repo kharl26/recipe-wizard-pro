@@ -12,6 +12,23 @@ const db = createDB(locals.supabase, profile);
 const people = await db.getPeople();
 const guests = await db.getGuests();
 const allPreferences = await db.getPreferences();
+const allConstraints = await db.getConstraints();
+const myConstraints = allConstraints.filter(c => c.user_id === user.id);
+const constraintsByGuest = {};
+for (const c of allConstraints) {
+  if (!c.guest_id) continue;
+  (constraintsByGuest[c.guest_id] ||= []).push(c);
+}
+
+const METRIC_LABELS = {
+  calories: 'Calories',
+  sodium_mg: 'Sodium (mg)',
+  carbs_g: 'Carbs (g)',
+  fat_g: 'Fat (g)',
+  protein_g: 'Protein (g)',
+  fiber_g: 'Fiber (g)',
+};
+const OP_LABELS = { lte: '≤', gte: '≥' };
 const pendingInvites = await db.getPendingInvites();
 const notifications = await db.getNotifications();
 const household = await db.getHousehold();
@@ -95,6 +112,48 @@ const tier = profile?.tier || 'free';
         </label>
         <button type="submit" class="plan-btn">Save profile</button>
         <span id="profile-status" class="settings-status"></span>
+      </form>
+    </div>
+
+    <!-- Dietary limits -->
+    <div class="settings-section">
+      <h2>Dietary Limits</h2>
+      <p class="settings-hint" style="font-size:0.82rem; margin-bottom:12px;">
+        Numeric per-serving limits the Wizard will respect when generating recipes for you.
+        Use ≤ for maximums (calories, sodium) and ≥ for minimums (protein, fiber).
+        These apply when you're in the "Cooking for" set; combined with others, the most restrictive value wins.
+      </p>
+
+      {myConstraints.length > 0 ? (
+        <ul class="constraint-list">
+          {myConstraints.map(c => (
+            <li class="constraint-item">
+              <span class="constraint-metric">{METRIC_LABELS[c.metric] || c.metric}</span>
+              <span class="constraint-op">{OP_LABELS[c.op] || c.op}</span>
+              <span class="constraint-value">{c.value}</span>
+              {c.note && <em class="constraint-note">— {c.note}</em>}
+              <button class="pref-remove" onclick={`removeMyConstraint('${c.id}')`} title="Remove">&times;</button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p class="settings-hint" style="font-style:italic;">No dietary limits set.</p>
+      )}
+
+      <form id="constraint-add-form" class="settings-form inline-form" onsubmit="addMyConstraint(event)">
+        <select name="metric" required>
+          {Object.entries(METRIC_LABELS).map(([k, label]) => (
+            <option value={k}>{label}</option>
+          ))}
+        </select>
+        <select name="op" required>
+          <option value="lte">≤ (max)</option>
+          <option value="gte">≥ (min)</option>
+        </select>
+        <input type="number" name="value" min="0" max="10000" step="1" required placeholder="amount">
+        <input type="text" name="note" maxlength="200" placeholder="note (optional)">
+        <button type="submit" class="plan-btn">Add limit</button>
+        <span id="constraint-add-status" class="settings-status"></span>
       </form>
     </div>
 
@@ -215,6 +274,40 @@ const tier = profile?.tier || 'free';
                   <button type="submit" class="plan-btn">Add</button>
                 </form>
               </div>
+
+              <div class="resident-prefs-section">
+                <strong>Dietary limits:</strong>
+                {(constraintsByGuest[g.id] || []).length === 0 ? (
+                  <p class="resident-no-prefs">No dietary limits yet. Add one below.</p>
+                ) : (
+                  <ul class="constraint-list">
+                    {(constraintsByGuest[g.id] || []).map(c => (
+                      <li class="constraint-item">
+                        <span class="constraint-metric">{METRIC_LABELS[c.metric] || c.metric}</span>
+                        <span class="constraint-op">{OP_LABELS[c.op] || c.op}</span>
+                        <span class="constraint-value">{c.value}</span>
+                        {c.note && <em class="constraint-note">— {c.note}</em>}
+                        <button class="pref-remove" onclick={`removeResidentConstraint('${c.id}')`} title="Remove">&times;</button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <form class="resident-add-pref-form" onsubmit={`addResidentConstraint(event, '${g.id}')`}>
+                  <select name="metric" required>
+                    {Object.entries(METRIC_LABELS).map(([k, label]) => (
+                      <option value={k}>{label}</option>
+                    ))}
+                  </select>
+                  <select name="op" required>
+                    <option value="lte">≤ (max)</option>
+                    <option value="gte">≥ (min)</option>
+                  </select>
+                  <input type="number" name="value" min="0" max="10000" step="1" required placeholder="amount">
+                  <input type="text" name="note" maxlength="200" placeholder="note (optional)">
+                  <button type="submit" class="plan-btn">Add limit</button>
+                </form>
+              </div>
             </div>
           ))}
         </div>
@@ -281,6 +374,9 @@ const tier = profile?.tier || 'free';
         const result = await resp.json();
         status.textContent = result.ok ? 'Saved!' : (result.error || 'Failed');
         status.className = 'settings-status ' + (result.ok ? 'success' : 'error');
+        if (result.ok) {
+          document.body.classList.toggle('no-recipe-photos', !form.show_photos.checked);
+        }
         setTimeout(() => status.textContent = '', 2000);
       } catch { status.textContent = 'Network error'; }
     });
@@ -406,6 +502,75 @@ const tier = profile?.tier || 'free';
       if (!confirm('Remove this preference?')) return;
       try {
         const resp = await fetch('/api/guest/preference?id=' + id, { method: 'DELETE' });
+        if (resp.ok) location.reload();
+      } catch { alert('Network error'); }
+    };
+
+    // Dietary constraints (self)
+    window.addMyConstraint = async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const status = document.getElementById('constraint-add-status');
+      const body = {
+        metric: form.metric.value,
+        op: form.op.value,
+        value: Number(form.value.value),
+        note: form.note.value.trim() || null,
+      };
+      try {
+        const resp = await fetch('/api/constraints', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const result = await resp.json();
+        if (result.ok) {
+          location.reload();
+        } else {
+          status.textContent = result.error || 'Failed';
+          status.className = 'settings-status error';
+        }
+      } catch {
+        status.textContent = 'Network error';
+        status.className = 'settings-status error';
+      }
+    };
+
+    window.removeMyConstraint = async (id) => {
+      if (!confirm('Remove this dietary limit?')) return;
+      try {
+        const resp = await fetch('/api/constraints?id=' + id, { method: 'DELETE' });
+        if (resp.ok) location.reload();
+      } catch { alert('Network error'); }
+    };
+
+    // Dietary constraints (residents)
+    window.addResidentConstraint = async (e, guestId) => {
+      e.preventDefault();
+      const form = e.target;
+      const body = {
+        guest_id: guestId,
+        metric: form.metric.value,
+        op: form.op.value,
+        value: Number(form.value.value),
+        note: form.note.value.trim() || null,
+      };
+      try {
+        const resp = await fetch('/api/guest/constraint', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const result = await resp.json();
+        if (result.ok) { location.reload(); }
+        else { alert(result.error || 'Failed'); }
+      } catch { alert('Network error'); }
+    };
+
+    window.removeResidentConstraint = async (id) => {
+      if (!confirm('Remove this dietary limit?')) return;
+      try {
+        const resp = await fetch('/api/guest/constraint?id=' + id, { method: 'DELETE' });
         if (resp.ok) location.reload();
       } catch { alert('Network error'); }
     };

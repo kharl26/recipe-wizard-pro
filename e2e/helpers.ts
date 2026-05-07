@@ -135,7 +135,7 @@ export async function fakeAuth(page: Page, profile = MOCK_PROFILE_FREE) {
   });
 
   // Intercept all other Supabase REST calls with empty success responses
-  await page.route(/\/rest\/v1\/(pantry|bookmarks|conversations|preferences|user_usage|user_messages|notifications|households|household_invites)/, async (route) => {
+  await page.route(/\/rest\/v1\/(pantry|bookmarks|conversations|preferences|user_usage|user_messages|notifications|households|household_invites|household_guests|dietary_constraints)/, async (route) => {
     const url = route.request().url();
     const method = route.request().method();
     // Return empty arrays for GETs, success for writes

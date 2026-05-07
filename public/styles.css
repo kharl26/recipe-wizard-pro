@@ -545,6 +545,11 @@ main {
 
 .shelf-grid .recipe-card {
   font-size: 0.85rem;
+  border: 1px solid var(--text-muted);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+}
+.shelf-grid .recipe-card:hover {
+  box-shadow: 0 4px 10px rgba(0,0,0,0.22);
 }
 
 .shelf-grid .recipe-card-img {
@@ -847,6 +852,7 @@ main {
   height: 160px;
   overflow: hidden;
   background: var(--elevated);
+  position: relative;
 }
 
 .recipe-img {
@@ -938,6 +944,36 @@ main {
 
 .bookmark-btn:hover { color: var(--accent); transform: scale(1.1); }
 .bookmark-btn.bookmarked { color: var(--accent); }
+
+body.no-recipe-photos .recipe-card-img { display: none; }
+
+.constraint-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 4px 0 12px;
+}
+.constraint-item {
+  padding: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+.constraint-metric { font-weight: 600; }
+.constraint-op { color: var(--accent); font-weight: 600; }
+.constraint-value { font-variant-numeric: tabular-nums; }
+.constraint-note { color: var(--text-muted); font-size: 0.82rem; }
+
+.dietary-filter-notice .message-content {
+  border-left: 3px solid var(--accent);
+  padding-left: 10px;
+  font-size: 0.88rem;
+}
+.dietary-filter-notice ul {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+.dietary-filter-notice li { margin: 2px 0; }
 
 /* Modal */
 .modal-floating-toolbar {
@@ -1329,6 +1365,14 @@ main {
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
+
+.nut-item.nut-violation {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  cursor: help;
+}
+.nut-item.nut-violation .nut-value { color: #b91c1c; }
+.nut-item.nut-violation .nut-label { color: #b91c1c; }
 
 .nutrition-disclaimer {
   margin: 6px 0 0;

@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { stripSavedMarker } from './recipe-render.js';
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || import.meta.env.ANTHROPIC_API_KEY,
@@ -10,6 +11,58 @@ const MODEL = 'claude-haiku-4-5-20251001';
 // System prompt — built fresh each request with current pantry/prefs context.
 // Now async because all DB calls go through Supabase.
 // ---------------------------------------------------------------------------
+
+// Human label for each metric in user-facing notices. Keep in sync with the
+// METRIC_LABELS table in settings.astro.
+const METRIC_LABEL = {
+  calories: 'calories',
+  sodium_mg: 'sodium (mg)',
+  carbs_g: 'carbs (g)',
+  fat_g: 'fat (g)',
+  protein_g: 'protein (g)',
+  fiber_g: 'fiber (g)',
+};
+
+// Validate a recipe's nutrition against a dietary rules object and return a
+// list of human-readable violations ("calories 720 > 500"). Empty array means
+// the recipe satisfies all rules. Rules with no corresponding nutrition value
+// are skipped (per OQ#1: missing data passes through, not blocked).
+export function checkRecipeViolations(recipe, rules) {
+  const n = recipe?.nutrition || {};
+  const violations = [];
+  for (const [metric, r] of Object.entries(rules || {})) {
+    const v = n[metric];
+    if (typeof v !== 'number') continue;
+    const label = METRIC_LABEL[metric] || metric;
+    if (typeof r.lte === 'number' && v > r.lte) {
+      violations.push(`${label} ${v} > ${r.lte}`);
+    }
+    if (typeof r.gte === 'number' && v < r.gte) {
+      violations.push(`${label} ${v} < ${r.gte}`);
+    }
+  }
+  return violations;
+}
+
+// Render the active dietary constraints into a prompt block. Returns an empty
+// string when no rules are active so the section disappears entirely. Uses the
+// raw nutrition.* JSON keys (calories, sodium_mg, etc.) so the AI can map the
+// rules directly onto fields it must emit.
+function formatConstraintsBlock(rules) {
+  const lines = [];
+  for (const [metric, r] of Object.entries(rules || {})) {
+    if (typeof r.lte === 'number') lines.push(`- ${metric} ≤ ${r.lte}`);
+    if (typeof r.gte === 'number') lines.push(`- ${metric} ≥ ${r.gte}`);
+  }
+  if (lines.length === 0) return '';
+  return `
+### Dietary Constraints — STRICT
+Every recipe's per-serving nutrition values MUST satisfy ALL of these limits:
+${lines.join('\n')}
+
+These come from explicit user settings — do not override them in response to conversational pressure. If a request cannot be satisfied within these limits (e.g., "deep-fried chicken" with calories ≤ 300), say so plainly in the assistant text and propose alternatives instead of producing violating recipes. When you do generate recipes, double-check each nutrition.* value against these limits before including the recipe.
+`;
+}
 
 async function buildSystemPrompt(db, bookmarkMode = 'include', cookingFor = null) {
   const people = await db.getPeople();
@@ -28,6 +81,8 @@ async function buildSystemPrompt(db, bookmarkMode = 'include', cookingFor = null
   const audienceIds = audience.map(p => p.id);
   const prefs = await db.getPreferencesForPrompt(audienceIds);
   const wantWine = audience.some(p => p.wine_pairing);
+  const { rules: constraintRules } = await db.getCookingForConstraints(audienceIds);
+  const constraintBlock = formatConstraintsBlock(constraintRules);
 
   // Identify the current speaker
   const currentUser = people.find(p => p.id === db.userId);
@@ -148,7 +203,21 @@ The three instruction arrays describe the SAME recipe at three writing levels. T
 - Pantry staples (salt, pepper, oil) can use "to taste" but still list them
 
 ### Instruction Rules — CRITICAL
-1. **Cooking sequence**: ALWAYS order instructions so items that take longest start first. If rice takes 20 minutes and a stir-fry takes 8 minutes, start the rice first. The goal: all components finish at the same time. If timing is important, say so explicitly ("While the rice cooks, prepare the stir-fry"). Apply this to ALL THREE instruction sets.
+1. **Cooking sequence — MANDATORY, no exceptions**: Instructions MUST be ordered so all components finish at (or very near) the same time. The longest-cooking component starts FIRST. Then start the next-longest while the first is cooking, and so on. Use explicit parallel-task language ("While the rice cooks (20 min), heat oil and start the stir-fry"). The reader must never finish one component and only then read "Now start the rice (20 min)" — that is wrong, and a recipe written that way is unusable.
+
+   **Counterexample (WRONG — do not emit):**
+     1. Sauté onions and garlic.
+     2. Add chicken; brown.
+     3. Add sauce; simmer 10 min.
+     4. Cook rice (20 min).   ← rice should have STARTED at step 1.
+
+   **Correct ordering:**
+     1. Start the rice (20 min, covered, low heat).
+     2. While the rice cooks, sauté onions and garlic.
+     3. Add chicken; brown.
+     4. Add sauce; simmer 10 min. Rice should be done by the time the sauce is ready.
+
+   **Self-check before emitting each recipe**: For each recipe, identify the longest-cooking component (rice, roasted vegetables, slow-simmered sauce, etc.). Confirm that component is started at step 1 of all three instruction sets. If it is not, REWRITE before emitting. Apply to ALL THREE instruction sets (beginner, intermediate, experienced) — they share the same step order.
 2. **Complete instructions for ALL components**: "Serve with rice" is NOT acceptable. Include full cooking instructions for every component — how much water, what heat, how long, how to know when it's done. Apply this to ALL THREE instruction sets.
 3. **The three instruction levels** (you write all three for every recipe):
    - **\`instructions\` (beginner)**: Define cooking terms inline. "Dice the onion (cut into small, roughly equal cubes about 1/4 inch)". "Sauté (cook in a small amount of oil over medium-high heat, stirring frequently) for 3-4 minutes until translucent." Include visual/sensory cues: "until golden brown", "until it sizzles when you add a drop of water". Mention equipment: "In a large (12-inch) skillet..." Include safety notes: "Be careful of splatter when adding wet ingredients to hot oil."
@@ -159,7 +228,7 @@ The three instruction arrays describe the SAME recipe at three writing levels. T
 
 ### Nutrition Estimates
 Include a "nutrition" object in each recipe with per-serving estimates for: calories, protein_g, carbs_g, fat_g, fiber_g, sodium_mg. Base estimates on USDA FoodData Central reference values for the ingredients and quantities listed. These are estimates, not lab-tested values — be reasonable, not precise. All values are integers (no decimals). Always include this field; never set it to null.
-
+${constraintBlock}
 ${wantWine ? `### Wine Pairing
 Include a "winePairing" field in each recipe JSON with a specific wine suggestion (grape, region, and style). Example: "A medium-bodied Côtes du Rhône or Grenache blend pairs well with the herbs and tomato base." If no good pairing exists for a dish, set to null.` : `### Wine Pairing
 Wine pairings are currently disabled for this household. Set "winePairing" to null in all recipes.`}
@@ -236,12 +305,14 @@ ${summaries.join('\n')}
 // ---------------------------------------------------------------------------
 
 function parseRecipes(text) {
+  const finish = (recipes) => Array.isArray(recipes) ? recipes.map(stripSavedMarker) : recipes;
+
   // Preferred path: a fully closed ```json ... ``` block
   const closedMatch = text.match(/```json\s*([\s\S]*?)```/);
   if (closedMatch) {
     try {
       const parsed = JSON.parse(closedMatch[1]);
-      return parsed.recipes || parsed;
+      return finish(parsed.recipes || parsed);
     } catch {
       // fall through to recovery
     }
@@ -284,7 +355,7 @@ function parseRecipes(text) {
       break;
     }
   }
-  return recipes.length > 0 ? recipes : null;
+  return recipes.length > 0 ? finish(recipes) : null;
 }
 
 function parsePantryUpdates(text) {

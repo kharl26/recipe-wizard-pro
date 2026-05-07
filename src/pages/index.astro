@@ -1,7 +1,7 @@
 ---
 import { createDB } from '../lib/db.js';
 import { stripCodeBlocks } from '../lib/ai.js';
-import { renderRecipeModalBody, renderChatMarkdown } from '../lib/recipe-render.js';
+import { renderRecipeModalBody, renderChatMarkdown, stripSavedMarker } from '../lib/recipe-render.js';
 import { renderPantrySection } from '../lib/pantry-render.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { getNewEntries } from '../lib/changelog.js';
@@ -19,6 +19,7 @@ let pantryItems = [];
 let people = [];
 let usage = 0;
 let usageLimit = 10;
+let viewerRules = {};
 let tier = 'free';
 
 let householdUnlimited = false;
@@ -26,6 +27,8 @@ if (isLoggedIn && profile) {
   const db = createDB(locals.supabase, profile);
   conversations = await db.getRecentConversations(20);
   bookmarks = await db.getBookmarks();
+  for (const b of bookmarks) stripSavedMarker(b.recipe);
+  ({ rules: viewerRules } = await db.getCookingForConstraints([user.id]));
   pantry = await db.getPantry();
   pantryItems = await db.getPantryItemNames();
   people = await db.getPeople();
@@ -116,7 +119,7 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
   <title>Recipe Wizard Pro</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body x-data="{ tab: 'chat', sidebarOpen: false, mode: 'include', showSignIn: false, userMenuOpen: false }" data-current-user={displayName ? displayName.toLowerCase() : 'everyone'}>
+<body x-data="{ tab: 'chat', sidebarOpen: false, mode: 'include', showSignIn: false, userMenuOpen: false }" data-current-user={displayName ? displayName.toLowerCase() : 'everyone'} class={profile?.show_photos ? '' : 'no-recipe-photos'}>
   <script id="rw-cook-config" type="application/json" set:html={JSON.stringify(cookBucketMap)}></script>
 
   {changelogEntries.length > 0 && (
@@ -348,6 +351,15 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
           <div class="recipe-grid" id="bookmarks-grid">
             {bookmarks.map(b => (
               <div class="recipe-card bookmark-card" x-data="{ showModal: false }">
+                <div class="recipe-card-img"
+                     hx-get={`/api/image?q=${encodeURIComponent(b.recipe.title + ' food dish')}`}
+                     hx-trigger="intersect once"
+                     hx-swap="innerHTML">
+                  <div class="img-placeholder recipe-placeholder">
+                    <span class="placeholder-cuisine">{b.recipe.cuisine || 'Recipe'}</span>
+                    <span class={`placeholder-difficulty ${(b.recipe.difficulty || 'Easy').toLowerCase()}`}>{b.recipe.difficulty || 'Easy'}</span>
+                  </div>
+                </div>
                 <div class="recipe-card-body" @click="showModal = true">
                   <h3 class="recipe-title">{b.recipe.title}</h3>
                   <p class="recipe-desc">{b.recipe.description}</p>
@@ -365,7 +377,7 @@ const displayName = profile?.display_name || user?.email?.split('@')[0] || '';
                         hx-target="closest .bookmark-card"
                         title="Remove from saved">&#9733;</button>
                 <div class="recipe-modal-overlay" x-show="showModal" x-cloak @click.self="showModal = false">
-                  <div class="recipe-modal" set:html={renderRecipeModalBody(b.recipe, pantryItems)}></div>
+                  <div class="recipe-modal" set:html={renderRecipeModalBody(b.recipe, pantryItems, viewerRules)}></div>
                 </div>
               </div>
             ))}

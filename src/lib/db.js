@@ -274,6 +274,123 @@ export function createDB(supabase, profile) {
       });
     },
 
+    // --- Dietary Constraints ---
+    //
+    // Numeric per-serving thresholds (e.g., calories <= 500). Distinct from
+    // preferences (categorical/free-text). Stored per-person, scoped to the
+    // household. See migration 009_dietary_constraints.sql.
+
+    async getConstraints() {
+      if (needsHousehold) return [];
+      const { data: rows } = await supabase
+        .from('dietary_constraints')
+        .select('*')
+        .eq('household_id', householdId)
+        .order('metric')
+        .order('op');
+      if (!rows?.length) return [];
+
+      const userIds = [...new Set(rows.map(r => r.user_id).filter(Boolean))];
+      const guestIds = [...new Set(rows.map(r => r.guest_id).filter(Boolean))];
+      const nameMap = {};
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, display_name')
+          .in('id', userIds);
+        for (const p of (profiles || [])) {
+          nameMap['u:' + p.id] = p.display_name || 'Member';
+        }
+      }
+      if (guestIds.length > 0) {
+        const { data: guests } = await supabase
+          .from('household_guests')
+          .select('id, display_name')
+          .in('id', guestIds);
+        for (const g of (guests || [])) {
+          nameMap['g:' + g.id] = g.display_name;
+        }
+      }
+      return rows.map(r => ({
+        ...r,
+        person_name: r.user_id ? nameMap['u:' + r.user_id] : nameMap['g:' + r.guest_id] || 'Unknown',
+        is_guest: !!r.guest_id,
+      }));
+    },
+
+    async addConstraint(personId, metric, op, value, note = null) {
+      // Mirrors addPreference: detect user vs guest by lookup.
+      let userIdToUse = null;
+      let guestIdToUse = null;
+      const { data: guest } = await supabase
+        .from('household_guests')
+        .select('id')
+        .eq('id', personId)
+        .eq('household_id', householdId)
+        .maybeSingle();
+      if (guest) {
+        guestIdToUse = personId;
+      } else {
+        userIdToUse = personId;
+      }
+
+      // The UNIQUE (user_id, guest_id, metric, op) constraint means a second
+      // add for the same metric+op replaces the value. Use upsert.
+      await supabase.from('dietary_constraints').upsert({
+        user_id: userIdToUse,
+        guest_id: guestIdToUse,
+        household_id: householdId,
+        metric, op, value, note,
+      }, { onConflict: 'user_id,guest_id,metric,op' });
+    },
+
+    async removeConstraint(id) {
+      // RLS guards: users can only delete their own; household members can
+      // delete any guest's; reads are allowed household-wide so we don't
+      // need extra checks here.
+      await supabase.from('dietary_constraints').delete().eq('id', id);
+    },
+
+    // Resolve the active rule set for a "cooking for" group.
+    //
+    // forPersonIds: array of user_ids and/or guest_ids. If null/empty, uses
+    // all household members.
+    //
+    // Returns:
+    //   {
+    //     rules: { metric: { lte?: number, gte?: number } },
+    //     conflicts: string[]  // metrics where lte < gte (impossible to satisfy)
+    //   }
+    //
+    // Merge rule: across people, take the most restrictive value per (metric, op).
+    //   - For 'lte' (max allowed): use the MIN across people.
+    //   - For 'gte' (min required): use the MAX across people.
+    async getCookingForConstraints(forPersonIds = null) {
+      if (needsHousehold) return { rules: {}, conflicts: [] };
+      const all = await this.getConstraints();
+      let active = all;
+      if (forPersonIds && Array.isArray(forPersonIds) && forPersonIds.length > 0) {
+        const set = new Set(forPersonIds);
+        active = all.filter(c => set.has(c.user_id) || set.has(c.guest_id));
+      }
+      const rules = {};
+      for (const c of active) {
+        const slot = (rules[c.metric] ||= {});
+        if (c.op === 'lte') {
+          slot.lte = (slot.lte === undefined) ? c.value : Math.min(slot.lte, c.value);
+        } else if (c.op === 'gte') {
+          slot.gte = (slot.gte === undefined) ? c.value : Math.max(slot.gte, c.value);
+        }
+      }
+      const conflicts = [];
+      for (const [metric, r] of Object.entries(rules)) {
+        if (r.lte !== undefined && r.gte !== undefined && r.lte < r.gte) {
+          conflicts.push(metric);
+        }
+      }
+      return { rules, conflicts };
+    },
+
     // --- Pantry ---
 
     async getPantry() {
