@@ -4,6 +4,21 @@
 
 export const changelog = [
   {
+    date: '2026-05-06',
+    title: 'Dietary limits + visual polish',
+    items: [
+      'Dietary Limits — set numeric per-serving limits (e.g., calories ≤ 500, sodium ≤ 800 mg, protein ≥ 25 g) in Settings. The Wizard respects them when generating recipes; any that don\'t fit get filtered with a notice telling you which limits they missed.',
+      'On the recipe detail page, nutrition tiles that violate one of your limits show in red with a hover tip explaining why.',
+      'Conflicting limits (e.g., calories ≤ 400 AND ≥ 600) now produce a clear message instead of failing silently.',
+      'Limits also work for household residents — set theirs in their card under Household Residents.',
+      'Saved recipes now show food photos too when the photo toggle is on (previously only suggested recipes had photos).',
+      'Recipe cards in the chat shelf got a darker border and stronger shadow so they stand out from the chat background.',
+      'Unsplash photo credit no longer overlays the bottom of the card.',
+      'Saved-star indicator is now accurate — previously it sometimes showed cards as saved when they weren\'t.',
+      '"[SAVED]" no longer appears as visible text in recipe titles or descriptions.',
+    ],
+  },
+  {
     date: '2026-04-26',
     title: 'Pantry and cooking-for upgrades',
     items: [

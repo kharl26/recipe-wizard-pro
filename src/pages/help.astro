@@ -78,6 +78,18 @@ const user = locals.user;
     </section>
 
     <section>
+      <h2>Dietary limits</h2>
+      <p>Set numeric per-serving limits in Settings under <strong>Dietary Limits</strong>. Pick a metric (calories, sodium, carbs, fat, protein, or fiber), an operator (≤ for maximums, ≥ for minimums), and a value. The Wizard respects your limits when generating recipes.</p>
+      <ul>
+        <li>Recipes that exceed your limits are filtered out, with a notice telling you which limits each one missed.</li>
+        <li>On the recipe detail page, nutrition tiles that violate one of your limits show in red — hover for the exact threshold.</li>
+        <li>Limits stack across the cooking-for set: if you've got a sodium limit and someone else doesn't, the stricter limit applies. If two people's limits conflict (one needs ≤ 400 cal, another ≥ 600), the Wizard tells you to adjust them rather than producing impossible recipes.</li>
+        <li>Household residents have their own dietary limits, set in their card under Household Residents.</li>
+      </ul>
+      <p class="settings-hint">Allergies and dietary preferences (vegetarian, gluten-free, etc.) still go under <em>Preferences</em> — those are categorical, while Dietary Limits are numeric.</p>
+    </section>
+
+    <section>
       <h2>Saving and sharing recipes</h2>
       <p>Click the star on any recipe card to save it. Saved recipes are always accessible — even on the free tier, you'll never lose access to recipes you've saved.</p>
       <ul>
