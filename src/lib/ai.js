@@ -64,7 +64,7 @@ These come from explicit user settings — do not override them in response to c
 `;
 }
 
-async function buildSystemPrompt(db, bookmarkMode = 'include', cookingFor = null) {
+async function buildSystemPrompt(db, bookmarkMode = 'include', cookingFor = null, dietaryRules = null) {
   const people = await db.getPeople();
   const pantry = await db.getPantryForPrompt();
   const onboarded = await db.isHouseholdOnboarded();
@@ -81,7 +81,11 @@ async function buildSystemPrompt(db, bookmarkMode = 'include', cookingFor = null
   const audienceIds = audience.map(p => p.id);
   const prefs = await db.getPreferencesForPrompt(audienceIds);
   const wantWine = audience.some(p => p.wine_pairing);
-  const { rules: constraintRules } = await db.getCookingForConstraints(audienceIds);
+  // Caller may pre-resolve the dietary rules (chat.js needs them for the
+  // server-side filter and conflict check, so it computes them once and
+  // hands them in here to avoid duplicate Supabase round-trips).
+  const constraintRules = dietaryRules
+    ?? (await db.getCookingForConstraints(audienceIds)).rules;
   const constraintBlock = formatConstraintsBlock(constraintRules);
 
   // Identify the current speaker
@@ -404,7 +408,7 @@ export function stripCodeBlocks(text) {
 // Main chat function — now accepts a db object (from createDB)
 // ---------------------------------------------------------------------------
 
-export async function chat(db, userMessage, bookmarkMode = 'include', cookingFor = null) {
+export async function chat(db, userMessage, bookmarkMode = 'include', cookingFor = null, dietaryRules = null) {
   // Store user message
   await db.addConversation('user', userMessage);
 
@@ -419,7 +423,7 @@ export async function chat(db, userMessage, bookmarkMode = 'include', cookingFor
   const response = await client.messages.create({
     model: MODEL,
     max_tokens: 8192,
-    system: await buildSystemPrompt(db, bookmarkMode, cookingFor),
+    system: await buildSystemPrompt(db, bookmarkMode, cookingFor, dietaryRules),
     messages,
   });
 

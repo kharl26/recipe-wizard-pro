@@ -13,15 +13,19 @@ const STAPLES = [
 ];
 
 // Remove "[SAVED]" markers the AI used to insert. Saved-state is now
-// represented by the filled bookmark star, not by visible text.
+// represented by the filled bookmark star, not by visible text. Returns a
+// shallow clone (does NOT mutate the input) so callers passing shared or
+// cached recipe objects don't lose markers globally.
 export function stripSavedMarker(recipe) {
   if (!recipe || typeof recipe !== 'object') return recipe;
   const clean = (s) => typeof s === 'string'
     ? s.replace(/\s*\[saved\]\s*/gi, ' ').replace(/\s+/g, ' ').trim()
     : s;
-  if (recipe.title) recipe.title = clean(recipe.title);
-  if (recipe.description) recipe.description = clean(recipe.description);
-  return recipe;
+  return {
+    ...recipe,
+    title: clean(recipe.title),
+    description: clean(recipe.description),
+  };
 }
 
 export function escapeHtml(str) {

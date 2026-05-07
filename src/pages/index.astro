@@ -27,7 +27,7 @@ if (isLoggedIn && profile) {
   const db = createDB(locals.supabase, profile);
   conversations = await db.getRecentConversations(20);
   bookmarks = await db.getBookmarks();
-  for (const b of bookmarks) stripSavedMarker(b.recipe);
+  for (const b of bookmarks) b.recipe = stripSavedMarker(b.recipe);
   ({ rules: viewerRules } = await db.getCookingForConstraints([user.id]));
   pantry = await db.getPantry();
   pantryItems = await db.getPantryItemNames();

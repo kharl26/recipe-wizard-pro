@@ -28,6 +28,12 @@ export async function POST({ request, locals }) {
       return new Response('Message is required', { status: 400 });
     }
 
+    // The viewer's own dietary rules (used for per-row violation styling in
+    // the recipe modal — separate from the cooking-for set, which can include
+    // others' constraints merged in). Hoisted above all branches so the
+    // saved-mode path can also pass it to renderRecipeCard.
+    const { rules: viewerRules } = await db.getCookingForConstraints([locals.user.id]);
+
     // Saved Only — local search, no AI call, no usage cost
     if (bookmarkMode === 'saved') {
       await db.addConversation('user', message);
@@ -55,11 +61,6 @@ export async function POST({ request, locals }) {
 
       return new Response(html, { headers: { 'Content-Type': 'text/html' } });
     }
-
-    // The viewer's own dietary rules (used for per-row violation styling in
-    // the recipe modal — separate from the cooking-for set, which can include
-    // others' constraints merged in).
-    const { rules: viewerRules } = await db.getCookingForConstraints([locals.user.id]);
 
     // Dietary-constraint conflict check: if a user has both a min and max for
     // the same metric and they cross (e.g., calories ≤ 400 AND ≥ 600), every
@@ -92,7 +93,7 @@ export async function POST({ request, locals }) {
     // Increment usage and call AI
     await db.incrementUsage();
     await db.logActivity('chat_message', { message: message.slice(0, 200), bookmarkMode, cookingFor });
-    const result = await chat(db, message, bookmarkMode, cookingFor);
+    const result = await chat(db, message, bookmarkMode, cookingFor, dietaryRules);
 
     let html = '';
 
