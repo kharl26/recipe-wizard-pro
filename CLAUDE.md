@@ -129,7 +129,7 @@ playwright.config.ts
 - Resend API key (`recipe-wizard-pro` key, sending access only)
 - Host: `smtp.resend.com`, port `587`, username `resend`, password = Resend API key
 - Sender: `noreply@mail.aachenor.com`
-- Backup copy of API key + DNS records: `~/Documents/4TBSSD/recipe-wizard-pro-keys.txt`
+- Backup copy of API key + DNS records: `~/Documents/4TBSSD/recipe-wizard-pro/keys.txt` (mode 600, gitignored, picked up by nightly rsync + weekly rclone)
 
 ## Not Yet Built (Deferred)
 - Phase 10: local instance admin integration (lower priority now that personal retired)
