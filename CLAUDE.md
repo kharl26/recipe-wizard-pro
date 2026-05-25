@@ -1,9 +1,7 @@
 # Recipe Wizard Pro — Multi-User Paid Recipe App
 
 ## What is this?
-Live at **https://recipewizard.aachenor.com** — the active production app Bob and Alice use for daily cooking. Multi-user version of Recipe Wizard with authentication, household management, and subscription billing. Week 7 bootcamp project.
-
-The personal single-user Recipe Wizard (Week 5) has been retired and archived at `~/Documents/4TBSSD/recipe-wizard-old/` — do not modify it. All development happens here.
+Live at **https://recipewizard.aachenor.com** — the active production app Bob and Alice use for daily cooking. Multi-user app with authentication, household management, and subscription billing. Started as Week 7 bootcamp project; superseded the earlier single-user Week 5 instance (now removed).
 
 ## Status (2026-05-06)
 - **Deployed**: Vercel free tier, auto-deploys on git push to main
@@ -26,7 +24,6 @@ The personal single-user Recipe Wizard (Week 5) has been retired and archived at
 cd ~/Documents/4TBSSD/recipe-wizard-pro
 npx astro dev --port 4326
 ```
-Note: port 4326 so it doesn't conflict with the old personal instance (4325) if it ever comes back up.
 
 ## Running tests
 ```bash
@@ -132,7 +129,6 @@ playwright.config.ts
 - Backup copy of API key + DNS records: `~/Documents/4TBSSD/recipe-wizard-pro/keys.txt` (mode 600, gitignored, picked up by nightly rsync + weekly rclone)
 
 ## Not Yet Built (Deferred)
-- Phase 10: local instance admin integration (lower priority now that personal retired)
 - AI-generated food photos (DALL-E/Flux): separate photo_style setting with per-generation cost; tier add-on pricing TBD
 - Sticky modal controls (Kitchen Mode + close visible on scroll) — CSS sticky broken by Alpine.js x-show transitions; needs JavaScript approach
 - Guest-to-user merge UI (endpoint exists, no UI yet)
