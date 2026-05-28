@@ -193,6 +193,14 @@ export async function POST({ request, locals }) {
     let errorMsg = 'Something went wrong. Please try again.';
     if (err.status === 429) errorMsg = 'Rate limited. Please wait a moment and try again.';
     if (err.status === 401) errorMsg = 'API key issue. Check configuration.';
+    // Anthropic returns 400 + invalid_request_error when the account's
+    // prepaid credit balance is depleted. Surface this distinctly so users
+    // know it's a service-side issue (and the admin knows what to fix)
+    // instead of getting the generic "something went wrong".
+    const apiMsg = err?.error?.error?.message || '';
+    if (err.status === 400 && /credit balance/i.test(apiMsg)) {
+      errorMsg = 'Recipe Wizard is temporarily unavailable while we top up our AI service. Your saved recipes are still accessible. Please try again shortly.';
+    }
     return new Response(
       `<div class="chat-message error-message">${errorMsg}</div>`,
       { status: 200, headers: { 'Content-Type': 'text/html' } }
