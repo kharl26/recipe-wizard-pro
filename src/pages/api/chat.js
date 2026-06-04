@@ -103,6 +103,11 @@ export async function POST({ request, locals }) {
       </div>`;
     }
 
+    // How many recipe cards actually reached the user (post dietary filter).
+    // Used by the truncation notice below, which lives outside this block so it
+    // also fires when truncation left zero parseable recipes.
+    let shownRecipeCount = 0;
+
     if (result.recipes && result.recipes.length > 0) {
       // Server-side dietary filter — backstop in case the AI emits a recipe
       // whose nutrition values violate the active rules. Drop violators and
@@ -134,6 +139,8 @@ export async function POST({ request, locals }) {
         </div>`;
       }
 
+      shownRecipeCount = kept.length;
+
       if (kept.length > 0) {
         await db.logActivity('recipes_generated', { count: kept.length, titles: kept.map(r => r.title) });
         const pantryItems = await db.getPantryItemNames();
@@ -145,6 +152,40 @@ export async function POST({ request, locals }) {
         }
         html += '</div></div>';
       }
+    }
+
+    // Truncation handling — lives OUTSIDE the recipes-present block on purpose.
+    // The model is asked for exactly 4 recipes; if the response hit the output
+    // ceiling (stop_reason max_tokens) mid-list, the parser drops the trailing
+    // incomplete recipe — and in the worst case yields zero parseable recipes,
+    // in which case result.recipes is null and the block above never runs. We
+    // detect a genuine loss as: response truncated, a ```json recipe attempt
+    // was present, and fewer than the requested 4 recipes parsed. (Truncation
+    // that happens in trailing prose after a complete 4-recipe block parses all
+    // 4, so this correctly stays silent there.)
+    const attemptedRecipes = /```json/.test(result.raw || '');
+    const parsedRecipeCount = result.recipes?.length || 0;
+    if (result.truncated && attemptedRecipes && parsedRecipeCount < 4) {
+      await db.logActivity('recipes_truncated', { shown: shownRecipeCount, parsed: parsedRecipeCount });
+      // Alert the admin via the Messages inbox so a recurring ceiling problem
+      // doesn't stay buried in the activity log. Best-effort: a failure here
+      // (RLS, missing migration, etc.) must never break the user's response.
+      try {
+        await locals.supabase.from('user_messages').insert({
+          user_id: locals.user.id,
+          user_email: locals.user.email || null,
+          context: 'system',
+          message: `Recipe response was truncated at the output-token limit for ${locals.user.email || 'a user'}. ${parsedRecipeCount} of the requested 4 recipes parsed; ${shownRecipeCount} shown after filtering. If this recurs, raise max_tokens in ai.js or reduce recipes-per-request.`,
+        });
+      } catch (alertErr) {
+        console.error('Truncation admin alert failed:', alertErr);
+      }
+      const userNotice = shownRecipeCount > 0
+        ? `The response was cut off before all recipes finished, so I'm showing the ${shownRecipeCount} that came through completely. Ask again for the rest, or request fewer at a time.`
+        : `The response was cut off before any complete recipe came through. Please try again — asking for fewer recipes at once helps.`;
+      html += `<div class="chat-message assistant-message dietary-filter-notice">
+        <div class="message-content">${userNotice}</div>
+      </div>`;
     }
 
     if (result.pantryUpdates.length > 0) {

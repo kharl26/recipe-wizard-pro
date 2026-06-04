@@ -420,14 +420,26 @@ export async function chat(db, userMessage, bookmarkMode = 'include', cookingFor
   }));
 
   // Call Claude
+  //
+  // max_tokens must comfortably fit 4 recipes, each carrying THREE full
+  // instruction sets (beginner/intermediate/experienced) plus ingredients and
+  // nutrition. At 8192 the 4th recipe was getting truncated mid-stream: the
+  // closing ```json fence never arrived, the parser's recovery path recovered
+  // only the 3 complete objects, and the user saw "4 recipes" in the prose but
+  // 3 cards. Haiku 4.5 supports far more output than this; 16000 gives ample
+  // headroom for the worst case (4 recipes + wine + verbose beginner steps).
   const response = await client.messages.create({
     model: MODEL,
-    max_tokens: 8192,
+    max_tokens: 16000,
     system: await buildSystemPrompt(db, bookmarkMode, cookingFor, dietaryRules),
     messages,
   });
 
   const assistantText = response.content[0]?.text || '';
+  // If the model still ran out of room, recipe parsing may silently drop the
+  // last recipe. Surface this to the caller so it can warn the user instead of
+  // quietly showing fewer cards than the prose promises.
+  const truncated = response.stop_reason === 'max_tokens';
 
   // Store assistant response
   await db.addConversation('assistant', assistantText);
@@ -513,6 +525,7 @@ export async function chat(db, userMessage, bookmarkMode = 'include', cookingFor
     experienceUpdates,
     onboardingComplete,
     cookingForUpdate,
+    truncated,
     raw: assistantText,
   };
 }
