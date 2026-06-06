@@ -78,8 +78,11 @@ export async function POST({ request, locals }) {
       }
     }
 
-    // Move user's profile to the new household
-    await locals.supabase
+    // Move user's profile to the new household. `household_id` is a privileged
+    // column the authenticated role can no longer write (migration 011), so this
+    // verified invite-accept move goes through the service-role client. The
+    // invite was already validated above (email match + pending status).
+    await supabaseAdmin
       .from('profiles')
       .update({ household_id: newHouseholdId })
       .eq('id', locals.user.id);

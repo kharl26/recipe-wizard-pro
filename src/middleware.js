@@ -31,16 +31,43 @@ export async function onRequest(context, next) {
     locals.profile = null;
   }
 
-  // --- CSRF: origin check on mutations ---
+  // --- CSRF: same-origin check on mutations (fail CLOSED) ---
+  // Astro's built-in checkOrigin is disabled (astro.config.mjs), so this is the
+  // ONLY CSRF layer. The previous version only validated the Origin header when
+  // it was present and let the request through when it was absent — fail-open,
+  // so any forged request that omits Origin (and several browser flows do)
+  // sailed past. Now every state-changing method must positively prove
+  // same-origin; if we can't establish it, we reject.
   if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
+    const host = request.headers.get('host') ?? '';
+    const proto = request.headers.get('x-forwarded-proto')
+      ?? new URL(request.url).protocol.slice(0, -1);
+    const expectedOrigin = `${proto}://${host}`;
+
     const origin = request.headers.get('origin');
+    const secFetchSite = request.headers.get('sec-fetch-site');
+    const referer = request.headers.get('referer');
+
+    let sameOrigin = false;
     if (origin) {
-      const host = request.headers.get('host') ?? '';
-      const proto = request.headers.get('x-forwarded-proto')
-        ?? new URL(request.url).protocol.slice(0, -1);
-      if (origin !== `${proto}://${host}`) {
-        return new Response('Forbidden', { status: 403 });
-      }
+      // Browsers send Origin on all mutating fetch/XHR and on cross-origin form
+      // posts; an exact match is proof of same-origin.
+      sameOrigin = origin === expectedOrigin;
+    } else if (secFetchSite) {
+      // No Origin, but Fetch Metadata states the request's relationship to the
+      // site. Allow same-origin / same-site / direct navigation; a forged
+      // cross-site POST reports 'cross-site' and is rejected.
+      sameOrigin = secFetchSite === 'same-origin'
+        || secFetchSite === 'same-site'
+        || secFetchSite === 'none';
+    } else if (referer) {
+      // Last resort for older clients: validate the Referer host.
+      try { sameOrigin = new URL(referer).host === host; } catch { sameOrigin = false; }
+    }
+    // No Origin, no Sec-Fetch-Site, no Referer → cannot prove same-origin → reject.
+
+    if (!sameOrigin) {
+      return new Response('Forbidden', { status: 403 });
     }
   }
 

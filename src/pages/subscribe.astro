@@ -2,6 +2,7 @@
 // Subscribe page: shows current plan, upgrade options, cancellation.
 import { getActiveSubscription } from '../lib/stripe.js';
 import { createDB } from '../lib/db.js';
+import { supabaseAdmin } from '../lib/supabase.js';
 
 const { locals, url } = Astro;
 const user = locals.user;
@@ -31,10 +32,15 @@ try {
   console.error('Stripe status check error:', err);
 }
 
-// If user just completed checkout, update their tier in Supabase
+// If user just completed checkout, upgrade their tier. `tier` is a privileged
+// column users can no longer write directly (migration 011 revokes column-level
+// UPDATE on tier/household_id from the authenticated role, closing a self-serve
+// admin-escalation hole), so this verified post-checkout upgrade must go through
+// the service-role client. Gated on a real Stripe subscription for this user's
+// email plus a currently-free tier.
 const sessionId = url.searchParams.get('session_id');
-if (sessionId && subscription && profile?.tier === 'free') {
-  await locals.supabase
+if (sessionId && subscription && profile?.tier === 'free' && supabaseAdmin) {
+  await supabaseAdmin
     .from('profiles')
     .update({ tier: 'subscriber' })
     .eq('id', user.id);
