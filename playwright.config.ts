@@ -17,6 +17,13 @@ export default defineConfig({
     baseURL: 'http://localhost:4326',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    // Real browsers send Sec-Fetch-Site on every request; Playwright's API
+    // request context doesn't. Without it, middleware's CSRF fail-closed check
+    // (no Origin/Sec-Fetch-Site/Referer -> reject) intercepts every mutating
+    // request before it reaches the auth/validation logic these tests target.
+    extraHTTPHeaders: {
+      'sec-fetch-site': 'same-origin',
+    },
   },
   projects: [
     {

@@ -34,6 +34,14 @@ export async function POST({ request, locals }) {
       return new Response(JSON.stringify({ error: 'This invite is not for you' }), { status: 403 });
     }
 
+    // Accepting requires the service-role client (household_id is a privileged
+    // column, migration 011). Check before flipping invite status so a missing
+    // key fails clean instead of leaving the invite stuck as 'accepted' with
+    // the household move never applied.
+    if (action === 'accept' && !supabaseAdmin) {
+      return new Response(JSON.stringify({ error: 'Server misconfiguration' }), { status: 500 });
+    }
+
     // Update invite status
     await locals.supabase
       .from('household_invites')
